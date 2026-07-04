@@ -46,7 +46,12 @@ export async function getNoteAction(id: string) {
   return row ?? null;
 }
 
-export async function createNoteAction(title?: string, content?: unknown) {
+export async function createNoteAction(
+  title?: string,
+  content?: unknown,
+  pageSettings?: string | null,
+  fontPreferences?: string | null,
+) {
   const { user } = await getSession();
   if (!user) throw new Error("Unauthorized");
 
@@ -55,9 +60,17 @@ export async function createNoteAction(title?: string, content?: unknown) {
 
   sqlite
     .prepare(
-      "INSERT INTO notes (id, title, content, created_at, updated_at) VALUES (?, ?, ?, ?, ?)",
+      "INSERT INTO notes (id, title, content, page_settings, font_preferences, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?)",
     )
-    .run(id, title ?? "Untitled", content ? JSON.stringify(content) : null, now, now);
+    .run(
+      id,
+      title ?? "Untitled",
+      content ? JSON.stringify(content) : null,
+      pageSettings ?? null,
+      fontPreferences ?? null,
+      now,
+      now,
+    );
 
   return { id };
 }
@@ -102,6 +115,8 @@ export async function saveNoteAction(
   title: string,
   content: string | null,
   lastSavedAt?: string,
+  pageSettings?: string | null,
+  fontPreferences?: string | null,
 ) {
   const { user } = await getSession();
   if (!user) throw new Error("Unauthorized");
@@ -118,9 +133,33 @@ export async function saveNoteAction(
 
   const now = new Date().toISOString();
 
+  const setClauses: string[] = [];
+  const values: (string | number | null)[] = [];
+
+  setClauses.push("title = ?");
+  values.push(title);
+
+  setClauses.push("content = ?");
+  values.push(content);
+
+  if (pageSettings !== undefined) {
+    setClauses.push("page_settings = ?");
+    values.push(pageSettings);
+  }
+
+  if (fontPreferences !== undefined) {
+    setClauses.push("font_preferences = ?");
+    values.push(fontPreferences);
+  }
+
+  setClauses.push("updated_at = ?");
+  values.push(now);
+
+  values.push(id);
+
   sqlite
-    .prepare("UPDATE notes SET title = ?, content = ?, updated_at = ? WHERE id = ?")
-    .run(title, content, now, id);
+    .prepare(`UPDATE notes SET ${setClauses.join(", ")} WHERE id = ?`)
+    .run(...values);
 
   return { updatedAt: now };
 }
@@ -190,4 +229,52 @@ export async function listTrashNotesAction() {
     createdAt: row.createdAt,
     updatedAt: row.updatedAt,
   }));
+}
+
+export async function listVersionsAction(noteId: string) {
+  const { user } = await getSession();
+  if (!user) throw new Error("Unauthorized");
+
+  const rows = sqlite
+    .prepare(
+      "SELECT id, version_number as versionNumber, content, created_at as createdAt FROM note_versions WHERE note_id = ? ORDER BY version_number DESC",
+    )
+    .all(noteId) as Array<{
+    id: string;
+    versionNumber: number;
+    content: string | null;
+    createdAt: string;
+  }>;
+
+  return rows;
+}
+
+export async function createVersionAction(noteId: string) {
+  const { user } = await getSession();
+  if (!user) throw new Error("Unauthorized");
+
+  const note = sqlite
+    .prepare("SELECT content FROM notes WHERE id = ? AND is_deleted = 0")
+    .get(noteId) as { content: string | null } | undefined;
+
+  if (!note) throw new Error("Note not found");
+
+  const id = generateIdFromEntropySize(10);
+  const now = new Date().toISOString();
+
+  const maxRow = sqlite
+    .prepare(
+      "SELECT COALESCE(MAX(version_number), 0) + 1 AS next FROM note_versions WHERE note_id = ?",
+    )
+    .get(noteId) as { next: number };
+
+  const versionNumber = maxRow.next;
+
+  sqlite
+    .prepare(
+      "INSERT INTO note_versions (id, note_id, content, version_number, created_at) VALUES (?, ?, ?, ?, ?)",
+    )
+    .run(id, noteId, note.content, versionNumber, now);
+
+  return { id, versionNumber, createdAt: now };
 }

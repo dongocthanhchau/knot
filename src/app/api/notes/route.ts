@@ -37,7 +37,7 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json();
-    const { title, content } = body;
+    const { title, content, pageSettings, fontPreferences } = body;
 
     if (!title || typeof title !== "string") {
       return NextResponse.json(
@@ -46,7 +46,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const note = await createNote(title, content);
+    const note = await createNote(title, content, pageSettings, fontPreferences);
     return NextResponse.json(note, { status: 201 });
   } catch (error) {
     console.error("POST /api/notes error:", error);

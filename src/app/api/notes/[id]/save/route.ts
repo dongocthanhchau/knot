@@ -14,9 +14,9 @@ export async function POST(
 
     const { id } = await params;
     const body = await request.json();
-    const { title, content, lastSavedAt } = body;
+    const { title, content, lastSavedAt, pageSettings, fontPreferences } = body;
 
-    const result = await saveNote(id, title, content, lastSavedAt);
+    const result = await saveNote(id, title, content, lastSavedAt, pageSettings, fontPreferences);
 
     if ("error" in result && result.error === "Conflict") {
       return NextResponse.json(

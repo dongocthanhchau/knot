@@ -2,25 +2,13 @@
 
 import { useState, useEffect, useCallback, useRef } from "react";
 import { useRouter } from "next/navigation";
-import Link from "next/link";
-import { ArrowLeft, Trash2 } from "lucide-react";
 
 import { cn } from "@/lib/utils";
 import { Editor } from "@/components/editor/editor";
-import { AutoSave, type SaveStatus } from "@/components/editor/auto-save";
-import { FocusModeToggle } from "@/components/editor/focus-mode-toggle";
-import { Button } from "@/components/ui/button";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-} from "@/components/ui/dialog";
+import { type SaveStatus } from "@/components/editor/status-bar";
 import { updateNoteAction, deleteNoteAction } from "@/server/notes";
 import { useFocusMode } from "@/contexts/focus-mode-context";
+import { useNoteHeader } from "@/contexts/note-header-context";
 
 interface NoteData {
   id: string;
@@ -137,88 +125,53 @@ export function NoteEditorClient({ note }: { note: NoteData }) {
     }
   }, [note.id, router]);
 
+  const { setData } = useNoteHeader();
+
+  // Push title bar state up to the Header via context
+  useEffect(() => {
+    setData({
+      noteId: note.id,
+      title,
+      onTitleChange: handleTitleChange,
+      onTitleBlur: handleTitleBlur,
+      deleteDialogOpen,
+      setDeleteDialogOpen,
+      onDelete: handleDelete,
+      isDeleting,
+      focusMode,
+    });
+    return () => setData(null);
+  }, [
+    note.id,
+    title,
+    handleTitleChange,
+    handleTitleBlur,
+    deleteDialogOpen,
+    setDeleteDialogOpen,
+    handleDelete,
+    isDeleting,
+    focusMode,
+    setData,
+  ]);
+
   return (
     <div
       className={cn(
-        "mx-auto flex flex-col",
-        focusMode
-          ? "min-h-screen"
-          : "min-h-[calc(100vh-8rem)] max-w-4xl",
+        "mx-auto flex flex-col max-w-4xl",
+        focusMode ? "min-h-screen" : "h-full",
       )}
     >
-      {/* Top bar — hidden in focus mode */}
-      {!focusMode && (
-        <div className="flex items-center gap-2 border-b px-2 py-2.5">
-          <Button variant="ghost" size="icon" asChild>
-            <Link href="/notes">
-              <ArrowLeft className="size-4" />
-              <span className="sr-only">Back to notes</span>
-            </Link>
-          </Button>
-
-          <input
-            id="note-title"
-            name="title"
-            value={title}
-            onChange={handleTitleChange}
-            onBlur={handleTitleBlur}
-            placeholder="Untitled"
-            className="flex-1 border-none bg-transparent text-2xl font-semibold tracking-tight placeholder:text-muted-foreground/40 focus:outline-none"
-          />
-
-          <FocusModeToggle />
-
-          <Dialog
-            open={deleteDialogOpen}
-            onOpenChange={setDeleteDialogOpen}
-          >
-            <DialogTrigger asChild>
-              <Button variant="ghost" size="icon">
-                <Trash2 className="size-4" />
-                <span className="sr-only">Delete note</span>
-              </Button>
-            </DialogTrigger>
-            <DialogContent>
-              <DialogHeader>
-                <DialogTitle>Delete note</DialogTitle>
-                <DialogDescription>
-                  Are you sure you want to delete this note? This action
-                  cannot be undone.
-                </DialogDescription>
-              </DialogHeader>
-              <DialogFooter>
-                <Button
-                  variant="outline"
-                  onClick={() => setDeleteDialogOpen(false)}
-                >
-                  Cancel
-                </Button>
-                <Button
-                  variant="destructive"
-                  onClick={handleDelete}
-                  disabled={isDeleting}
-                >
-                  {isDeleting ? "Deleting..." : "Delete"}
-                </Button>
-              </DialogFooter>
-            </DialogContent>
-          </Dialog>
-        </div>
-      )}
-
       {/* Editor area */}
-      <div className={cn("flex-1", focusMode && "mx-auto w-full max-w-4xl")}>
+      <div className={cn("flex-1 min-h-0", focusMode && "mx-auto w-full max-w-4xl")}>
         <Editor
           content={content}
           onUpdate={handleEditorUpdate}
+          pageLayout
+          saveStatus={saveStatus}
+          lastSavedAt={lastSavedAt}
           className="border-0 rounded-none shadow-none"
         />
       </div>
-
-      {/* Auto-save bar — hidden in focus mode */}
-      {!focusMode && (
-        <AutoSave status={saveStatus} lastSavedAt={lastSavedAt} />
-      )}
     </div>
   );
 }

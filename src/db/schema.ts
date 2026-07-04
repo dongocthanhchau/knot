@@ -20,6 +20,8 @@ export const notes = sqliteTable("notes", {
   isDeleted: integer("is_deleted").default(0),
   createdAt: text("created_at").notNull(),
   updatedAt: text("updated_at").notNull(),
+  pageSettings: text("page_settings"),
+  fontPreferences: text("font_preferences"),
 });
 
 export const tags = sqliteTable("tags", {
@@ -44,6 +46,7 @@ export const noteVersions = sqliteTable("note_versions", {
   id: text("id").primaryKey(),
   noteId: text("note_id").references(() => notes.id),
   content: text("content"),
+  versionNumber: integer("version_number").notNull(),
   createdAt: text("created_at").notNull(),
 });
 

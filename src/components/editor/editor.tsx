@@ -1,19 +1,28 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import { useEditor, EditorContent } from "@tiptap/react";
 import StarterKit from "@tiptap/starter-kit";
 import Underline from "@tiptap/extension-underline";
 import TextAlign from "@tiptap/extension-text-align";
 import ImageExt from "@tiptap/extension-image";
 import { Table } from "@tiptap/extension-table";
+import { CellSelection } from "@tiptap/pm/tables";
+
 import TableRow from "@tiptap/extension-table-row";
-import TableCell from "@tiptap/extension-table-cell";
-import TableHeader from "@tiptap/extension-table-header";
+import { CustomTableCell } from "./table-cell-ext";
+import { CustomTableHeader } from "./table-cell-ext";
 import LinkExt from "@tiptap/extension-link";
 import Placeholder from "@tiptap/extension-placeholder";
 import CodeBlockLowlight from "@tiptap/extension-code-block-lowlight";
 import Highlight from "@tiptap/extension-highlight";
+import { TextStyle } from "@tiptap/extension-text-style";
+import FontSize from "@tiptap/extension-font-size";
+import FontFamily from "@tiptap/extension-font-family";
+import Color from "@tiptap/extension-color";
+import Subscript from "@tiptap/extension-subscript";
+import Superscript from "@tiptap/extension-superscript";
 import { common, createLowlight } from "lowlight";
 import {
   Bold,
@@ -37,16 +46,14 @@ import {
   Undo,
   Redo,
   Highlighter,
-  Plus,
-  Trash2,
-  Merge,
-  Split,
-  ArrowUpDown,
 } from "lucide-react";
 
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
+import { Toolbar } from "./toolbar";
+import { TablePopupMenu } from "./table-popup-menu";
+import { StatusBar, type SaveStatus } from "./status-bar";
 
 const lowlight = createLowlight(common);
 
@@ -55,6 +62,9 @@ interface EditorProps {
   onUpdate?: (html: string) => void;
   readOnly?: boolean;
   className?: string;
+  pageLayout?: boolean;
+  saveStatus?: SaveStatus;
+  lastSavedAt?: Date | null;
 }
 
 type SlashAction =
@@ -121,6 +131,9 @@ export function Editor({
   onUpdate,
   readOnly = false,
   className,
+  pageLayout = false,
+  saveStatus = "idle",
+  lastSavedAt = null,
 }: EditorProps) {
   const [slashMenuOpen, setSlashMenuOpen] = useState(false);
   const [slashMenuPos, setSlashMenuPos] = useState<{ x: number; y: number } | null>(null);
@@ -128,6 +141,13 @@ export function Editor({
   const processingSlash = useRef(false);
   const [tableMenuPos, setTableMenuPos] = useState<{ x: number; y: number } | null>(null);
   const tableMenuRef = useRef<HTMLDivElement>(null);
+  const tableHideTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(() => {
+    return () => {
+      if (tableHideTimerRef.current) clearTimeout(tableHideTimerRef.current);
+    };
+  }, []);
 
   const editor = useEditor({
     extensions: [
@@ -138,12 +158,12 @@ export function Editor({
         underline: false,
       }),
       Underline,
-      TextAlign.configure({ types: ["heading", "paragraph"] }),
+      TextAlign.configure({ types: ["heading", "paragraph", "tableCell", "tableHeader"] }),
       ImageExt.configure({ inline: false, allowBase64: true }),
       Table.configure({ resizable: true, allowTableNodeSelection: true }),
       TableRow,
-      TableCell,
-      TableHeader,
+      CustomTableCell,
+      CustomTableHeader,
       LinkExt.configure({
         openOnClick: false,
         autolink: true,
@@ -152,6 +172,12 @@ export function Editor({
       Placeholder.configure({ placeholder: "Start writing..." }),
       CodeBlockLowlight.configure({ lowlight }),
       Highlight,
+      TextStyle,
+      FontSize,
+      FontFamily,
+      Color,
+      Subscript,
+      Superscript,
     ],
     content,
     editable: !readOnly,
@@ -186,15 +212,38 @@ export function Editor({
       }
     },
     onSelectionUpdate: ({ editor: ed }) => {
-      if (ed.isActive("table")) {
-        const coords = ed.view.coordsAtPos(ed.state.selection.anchor);
+      const sel = ed.state.selection;
+      const inTable = ed.isActive("table");
+      const isCellSel = sel instanceof CellSelection;
+      const show = inTable && (!sel.empty || isCellSel);
+
+      if (show) {
+        if (tableHideTimerRef.current) {
+          clearTimeout(tableHideTimerRef.current);
+          tableHideTimerRef.current = null;
+        }
+        const anchor = ed.state.selection.anchor;
+        const coords = ed.view.coordsAtPos(anchor);
+
         if (coords) {
-          const estimatedHeight = 280;
+          const estimatedHeight = 320;
           const spaceBelow = window.innerHeight - coords.bottom;
           const top = spaceBelow >= estimatedHeight
             ? coords.bottom + 4
             : Math.max(8, coords.top - estimatedHeight);
-          setTableMenuPos({ x: coords.left, y: top });
+          const x = coords.right + 248 > window.innerWidth - 8
+            ? coords.left - 208
+            : coords.right + 8;
+          setTableMenuPos({ x, y: top });
+        }
+      } else if (isCellSel) {
+        setTableMenuPos(null);
+      } else if (inTable) {
+        if (!tableHideTimerRef.current) {
+          tableHideTimerRef.current = setTimeout(() => {
+            setTableMenuPos(null);
+            tableHideTimerRef.current = null;
+          }, 150);
         }
       } else {
         setTableMenuPos(null);
@@ -256,7 +305,10 @@ export function Editor({
         tableMenuRef.current &&
         !tableMenuRef.current.contains(e.target as Node)
       ) {
-        setTableMenuPos(null);
+        const inTable = (e.target as Element | null)?.closest?.(".tableWrapper");
+        if (!inTable) {
+          setTableMenuPos(null);
+        }
       }
     };
 
@@ -335,10 +387,279 @@ export function Editor({
     editor.chain().focus().setImage({ src: url }).run();
   }, [editor]);
 
-  if (!editor) {
-    return null;
+  if (!editor) return null;
+
+  if (pageLayout) {
+    // ====== PAGE LAYOUT MODE (Word-like) ======
+    return (
+      <div className={cn("editor-container knot-editor", className)}>
+        {!readOnly && (
+          <div className="knot-editor-toolbar bg-background">
+            <Toolbar editor={editor} />
+          </div>
+        )}
+
+        {slashMenuOpen && slashMenuPos && (
+          <div
+            ref={slashMenuRef}
+            style={{
+              position: "fixed",
+              left: slashMenuPos.x,
+              top: slashMenuPos.y,
+              zIndex: 9999,
+            }}
+            className="w-56 rounded-lg border bg-popover p-1 shadow-lg"
+          >
+            {SLASH_OPTIONS.map((option) => {
+              const Icon = option.icon;
+              return (
+                <button
+                  key={option.action}
+                  type="button"
+                  onClick={() => handleSlashSelect(option.action)}
+                  className="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-sm text-popover-foreground hover:bg-accent hover:text-accent-foreground"
+                >
+                  <Icon className="size-4 shrink-0" />
+                  <span>{option.label}</span>
+                </button>
+              );
+            })}
+          </div>
+        )}
+
+        {tableMenuPos && (
+          <div
+            ref={tableMenuRef}
+            style={{ position: "fixed", left: tableMenuPos.x, top: tableMenuPos.y }}
+            data-table-popup="true"
+            className="z-[9999] rounded-lg border bg-popover p-0 shadow-lg"
+          >
+            <TablePopupMenu editor={editor} />
+          </div>
+        )}
+
+        <div className="knot-editor-scroll">
+          <div className="knot-editor-page">
+            <div className="px-8 py-6 min-h-[400px] cursor-text">
+              <EditorContent editor={editor} />
+            </div>
+            <StatusBar
+              editor={editor}
+              saveStatus={saveStatus}
+              lastSavedAt={lastSavedAt}
+            />
+          </div>
+        </div>
+
+        <style>{`
+          .editor-container .ProseMirror {
+            outline: none;
+            min-height: 400px;
+          }
+          .editor-container .ProseMirror h1 {
+            font-size: 1.875rem;
+            font-weight: 700;
+            line-height: 1.2;
+            margin-top: 1.5rem;
+            margin-bottom: 0.75rem;
+          }
+          .editor-container .ProseMirror h2 {
+            font-size: 1.5rem;
+            font-weight: 700;
+            line-height: 1.3;
+            margin-top: 1.25rem;
+            margin-bottom: 0.5rem;
+          }
+          .editor-container .ProseMirror h3 {
+            font-size: 1.25rem;
+            font-weight: 600;
+            line-height: 1.4;
+            margin-top: 1rem;
+            margin-bottom: 0.5rem;
+          }
+          .editor-container .ProseMirror p {
+            margin-bottom: 0.5rem;
+            line-height: 1.7;
+          }
+          .editor-container .ProseMirror ul,
+          .editor-container .ProseMirror ol {
+            padding-left: 1.5rem;
+            margin-bottom: 0.5rem;
+          }
+          .editor-container .ProseMirror ul {
+            list-style-type: disc;
+          }
+          .editor-container .ProseMirror ol {
+            list-style-type: decimal;
+          }
+          .editor-container .ProseMirror li {
+            margin-bottom: 0.25rem;
+          }
+          .editor-container .ProseMirror pre {
+            background: var(--muted);
+            border-radius: 0.5rem;
+            padding: 1rem;
+            font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+            font-size: 0.875rem;
+            line-height: 1.6;
+            overflow-x: auto;
+            margin-bottom: 0.75rem;
+          }
+          .editor-container .ProseMirror pre code {
+            background: none;
+            padding: 0;
+            font-size: inherit;
+            color: inherit;
+          }
+          .editor-container .ProseMirror code {
+            background: var(--muted);
+            border-radius: 0.25rem;
+            padding: 0.125rem 0.25rem;
+            font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+            font-size: 0.875em;
+          }
+          .editor-container .ProseMirror blockquote {
+            border-left: 3px solid var(--primary);
+            padding-left: 1rem;
+            margin-left: 0;
+            margin-right: 0;
+            margin-bottom: 0.5rem;
+            font-style: italic;
+            color: var(--muted-foreground);
+          }
+          .editor-container .ProseMirror hr {
+            border: none;
+            border-top: 1px solid var(--border);
+            margin: 1.5rem 0;
+          }
+          .editor-container .ProseMirror table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-bottom: 0.75rem;
+            overflow: hidden;
+          }
+          .editor-container .ProseMirror th,
+          .editor-container .ProseMirror td {
+            border: 1px solid var(--border);
+            padding: 0.5rem 0.75rem;
+            text-align: left;
+            position: relative;
+            vertical-align: top;
+            min-width: 80px;
+          }
+          .editor-container .ProseMirror th {
+            position: relative;
+            background: var(--muted);
+            font-weight: 600;
+          }
+          .editor-container .ProseMirror a {
+            color: var(--primary);
+            text-decoration: underline;
+            cursor: pointer;
+          }
+          .editor-container .ProseMirror img {
+            max-width: 100%;
+            height: auto;
+            border-radius: 0.375rem;
+            margin: 0.75rem 0;
+          }
+          .editor-container .ProseMirror p.is-editor-empty:first-child::before {
+            color: var(--muted-foreground);
+            content: attr(data-placeholder);
+            float: left;
+            height: 0;
+            pointer-events: none;
+          }
+          .editor-container .ProseMirror p.is-empty::before {
+            color: var(--muted-foreground);
+            content: attr(data-placeholder);
+            float: left;
+            height: 0;
+            pointer-events: none;
+          }
+          .editor-container .ProseMirror mark {
+            background: #fef08a;
+            border-radius: 0.125rem;
+            padding: 0.125rem 0;
+          }
+          .dark .editor-container .ProseMirror mark {
+            background: #854d0e;
+            color: #fef9c3;
+          }
+          .editor-container .ProseMirror ul[data-type="taskList"] {
+            list-style: none;
+            padding-left: 0;
+          }
+          .editor-container .ProseMirror ul[data-type="taskList"] li {
+            display: flex;
+            align-items: flex-start;
+            gap: 0.5rem;
+          }
+          .editor-container .ProseMirror ul[data-type="taskList"] li > label {
+            flex-shrink: 0;
+            margin-top: 0.25rem;
+          }
+          .editor-container .ProseMirror ul[data-type="taskList"] li > div {
+            flex: 1;
+          }
+          .editor-container .ProseMirror .tableWrapper {
+            overflow-x: auto;
+            margin-bottom: 0.75rem;
+          }
+          .editor-container .ProseMirror table {
+            table-layout: fixed;
+            position: relative;
+          }
+          .editor-container .ProseMirror .column-resize-handle {
+            position: absolute;
+            right: -2px;
+            top: 0;
+            bottom: 0;
+            width: 4px;
+            background: var(--primary);
+            cursor: col-resize;
+            z-index: 20;
+          }
+          .editor-container .ProseMirror .selectedCell {
+            background: var(--accent);
+            outline: 2px solid var(--primary);
+          }
+
+          .editor-container.knot-editor {
+            border: none;
+            border-radius: 0;
+            background: #f5f5f5;
+            height: 100%;
+            width: 100%;
+            display: flex;
+            flex-direction: column;
+            min-height: 0;
+          }
+          .dark .editor-container.knot-editor {
+            background: #1a1a2e;
+          }
+          .knot-editor-toolbar {
+            border-bottom: 1px solid hsl(var(--border));
+          }
+          .knot-editor-scroll {
+            flex: 1;
+            overflow-y: auto;
+            padding: 4px 16px 24px;
+          }
+          .knot-editor-page {
+            max-width: 860px;
+            margin: 0 auto;
+            background: hsl(var(--background));
+            box-shadow: 0 1px 3px rgba(0,0,0,0.12), 0 1px 6px rgba(0,0,0,0.08);
+            border-radius: 4px;
+            min-height: 500px;
+          }
+        `}</style>
+      </div>
+    );
   }
 
+  // ====== NORMAL MODE (current behavior) ======
   return (
     <div
       className={cn(
@@ -559,73 +880,11 @@ export function Editor({
       {tableMenuPos && (
         <div
           ref={tableMenuRef}
-          style={{
-            position: "fixed",
-            left: tableMenuPos.x,
-            top: tableMenuPos.y,
-            zIndex: 9999,
-          }}
-          className="w-56 rounded-lg border bg-popover p-1 shadow-lg"
+          style={{ position: "fixed", left: tableMenuPos.x, top: tableMenuPos.y }}
+          data-table-popup="true"
+          className="z-[9999] rounded-lg border bg-popover p-0 shadow-lg"
         >
-          <div className="mb-1 px-2 py-1 text-xs font-medium text-muted-foreground">
-            Table
-          </div>
-          <div className="grid grid-cols-2 gap-px">
-            <TablePopupButton
-              label="Column before"
-              icon={Plus}
-              shortcut="←"
-              onClick={() => editor.chain().focus().addColumnBefore().run()}
-            />
-            <TablePopupButton
-              label="Column after"
-              icon={Plus}
-              shortcut="→"
-              onClick={() => editor.chain().focus().addColumnAfter().run()}
-            />
-            <TablePopupButton
-              label="Row above"
-              icon={Plus}
-              shortcut="↑"
-              onClick={() => editor.chain().focus().addRowBefore().run()}
-            />
-            <TablePopupButton
-              label="Row below"
-              icon={Plus}
-              shortcut="↓"
-              onClick={() => editor.chain().focus().addRowAfter().run()}
-            />
-          </div>
-          <div className="mt-1 border-t pt-1">
-            <TablePopupButton
-              label="Toggle header"
-              icon={ArrowUpDown}
-              onClick={() => editor.chain().focus().toggleHeaderCell().run()}
-            />
-            <TablePopupButton
-              label="Merge cells"
-              icon={Merge}
-              onClick={() => editor.chain().focus().mergeCells().run()}
-            />
-            <TablePopupButton
-              label="Split cell"
-              icon={Split}
-              onClick={() => editor.chain().focus().splitCell().run()}
-            />
-          </div>
-          <div className="mt-1 border-t pt-1">
-            <button
-              type="button"
-              onClick={() => {
-                editor.chain().focus().deleteTable().run();
-                setTableMenuPos(null);
-              }}
-              className="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-sm text-destructive hover:bg-destructive/10"
-            >
-              <Trash2 className="size-4" />
-              <span>Delete table</span>
-            </button>
-          </div>
+          <TablePopupMenu editor={editor} />
         </div>
       )}
 
@@ -809,30 +1068,7 @@ export function Editor({
       `}</style>
     </div>
   );
-}
 
-function TablePopupButton({
-  label,
-  icon: Icon,
-  shortcut,
-  onClick,
-}: {
-  label: string;
-  icon: React.ComponentType<{ className?: string }>;
-  shortcut?: string;
-  onClick: () => void;
-}) {
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      className="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-sm text-popover-foreground hover:bg-accent hover:text-accent-foreground"
-    >
-      <Icon className="size-4 shrink-0" />
-      <span className="flex-1 text-left">{label}</span>
-      {shortcut && (
-        <span className="text-xs text-muted-foreground">{shortcut}</span>
-      )}
-    </button>
-  );
-}
+  }
+
+

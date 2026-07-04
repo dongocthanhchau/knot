@@ -1,6 +1,7 @@
 "use client";
 
 import * as React from "react";
+import { usePathname } from "next/navigation";
 import { Sidebar } from "@/components/layout/sidebar";
 import { Header } from "@/components/layout/header";
 import { MainContent } from "@/components/layout/main-content";
@@ -11,6 +12,7 @@ import {
   FocusModeProvider,
   useFocusMode,
 } from "@/contexts/focus-mode-context";
+import { NoteHeaderProvider } from "@/contexts/note-header-context";
 
 interface AppShellProps {
   children: React.ReactNode;
@@ -20,7 +22,9 @@ export function AppShell({ children }: AppShellProps) {
   return (
     <TooltipProvider>
       <FocusModeProvider>
-        <AppShellInner>{children}</AppShellInner>
+        <NoteHeaderProvider>
+          <AppShellInner>{children}</AppShellInner>
+        </NoteHeaderProvider>
       </FocusModeProvider>
     </TooltipProvider>
   );
@@ -28,6 +32,9 @@ export function AppShell({ children }: AppShellProps) {
 
 function AppShellInner({ children }: AppShellProps) {
   const { focusMode } = useFocusMode();
+  const pathname = usePathname();
+  const isNoteEditor = pathname?.startsWith("/notes/");
+  const mainClassName = isNoteEditor ? "p-0 lg:p-0" : undefined;
   const [collapsed, setCollapsed] = React.useState(false);
   const [mobileOpen, setMobileOpen] = React.useState(false);
 
@@ -35,7 +42,7 @@ function AppShellInner({ children }: AppShellProps) {
     return (
       <div className="flex h-screen overflow-hidden bg-background">
         <div className="flex flex-1 flex-col overflow-hidden">
-          <MainContent>{children}</MainContent>
+          <MainContent className={mainClassName}>{children}</MainContent>
         </div>
       </div>
     );
@@ -61,7 +68,7 @@ function AppShellInner({ children }: AppShellProps) {
       {/* Main area */}
       <div className="flex flex-1 flex-col overflow-hidden">
         <Header onMenuClick={() => setMobileOpen(true)} />
-        <MainContent>{children}</MainContent>
+        <MainContent className={mainClassName}>{children}</MainContent>
       </div>
     </div>
   );

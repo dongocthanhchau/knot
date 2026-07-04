@@ -1,0 +1,175 @@
+uid=116_0 RootWebArea "Knot" url="http://localhost:3000/notes/3yp5unmi74u6jyzl"
+  uid=116_1 complementary
+    uid=116_2 StaticText "Knot"
+    uid=116_3 navigation
+      uid=116_4 link "Dashboard" url="http://localhost:3000/"
+        uid=116_5 StaticText "Dashboard"
+      uid=116_6 link "Notes" url="http://localhost:3000/notes"
+        uid=116_7 StaticText "Notes"
+      uid=116_8 link "Tags" url="http://localhost:3000/tags"
+        uid=116_9 StaticText "Tags"
+      uid=116_10 link "Trash" url="http://localhost:3000/notes/trash"
+        uid=116_11 StaticText "Trash"
+      uid=116_12 link "Settings" url="http://localhost:3000/settings"
+        uid=116_13 StaticText "Settings"
+    uid=116_14 button "Collapse sidebar"
+  uid=116_15 banner
+    uid=116_16 button "Toggle theme" expandable haspopup="menu"
+    uid=116_17 button "K" expandable haspopup="menu"
+  uid=116_18 main
+    uid=116_19 link "Back to notes" url="http://localhost:3000/notes"
+      uid=116_20 StaticText "Back to notes"
+    uid=116_21 textbox "Untitled" value="Test Note from Browser"
+    uid=116_22 button "Focus mode"
+    uid=116_23 button "Delete note" expandable haspopup="dialog"
+    uid=116_24 combobox expandable haspopup="menu" value="Georgia"
+      uid=116_25 option "Default" selectable value="Default"
+      uid=116_26 option "Arial" selectable value="Arial"
+      uid=116_27 option "Helvetica" selectable value="Helvetica"
+      uid=116_28 option "Times New Roman" selectable value="Times New Roman"
+      uid=116_29 option "Georgia" selectable selected value="Georgia"
+      uid=116_30 option "Courier New" selectable value="Courier New"
+      uid=116_31 option "Verdana" selectable value="Verdana"
+      uid=116_32 option "Trebuchet MS" selectable value="Trebuchet MS"
+      uid=116_33 option "Impact" selectable value="Impact"
+    uid=116_34 combobox expandable haspopup="menu" value="32"
+      uid=116_35 option "Size" selectable value="Size"
+      uid=116_36 option "8" selectable value="8"
+      uid=116_37 option "9" selectable value="9"
+      uid=116_38 option "10" selectable value="10"
+      uid=116_39 option "11" selectable value="11"
+      uid=116_40 option "12" selectable value="12"
+      uid=116_41 option "14" selectable value="14"
+      uid=116_42 option "16" selectable value="16"
+      uid=116_43 option "18" selectable value="18"
+      uid=116_44 option "20" selectable value="20"
+      uid=116_45 option "24" selectable value="24"
+      uid=116_46 option "28" selectable value="28"
+      uid=116_47 option "32" selectable selected value="32"
+      uid=116_48 option "36" selectable value="36"
+      uid=116_49 option "42" selectable value="42"
+      uid=116_50 option "48" selectable value="48"
+      uid=116_51 option "54" selectable value="54"
+      uid=116_52 option "60" selectable value="60"
+      uid=116_53 option "66" selectable value="66"
+      uid=116_54 option "72" selectable value="72"
+    uid=116_55 button "Bold"
+    uid=116_56 button "Italic"
+    uid=116_57 button "Underline"
+    uid=116_58 button "Strikethrough"
+    uid=116_59 button "Subscript"
+    uid=116_60 button "Superscript"
+    uid=116_61 button "Inline Code"
+    uid=116_62 button "Text Color" focusable focused
+    uid=118_0 button "#000000"
+    uid=118_1 button "#434343"
+    uid=118_2 button "#666666"
+    uid=118_3 button "#999999"
+    uid=118_4 button "#b7b7b7"
+    uid=118_5 button "#cccccc"
+    uid=118_6 button "#ff0000"
+    uid=118_7 button "#e69138"
+    uid=118_8 button "#f1c232"
+    uid=118_9 button "#6aa84f"
+    uid=118_10 button "#45818e"
+    uid=118_11 button "#3d85c6"
+    uid=118_12 button "#674ea7"
+    uid=118_13 button "#a64d79"
+    uid=118_14 button "#d5a6bd"
+    uid=118_15 button "Remove color"
+    uid=116_63 button "Highlight"
+    uid=116_64 button "Align Left"
+    uid=116_65 button "Align Center"
+    uid=116_66 button "Align Right"
+    uid=116_67 button "Bullet List"
+    uid=116_68 button "Ordered List"
+    uid=116_69 button "Table"
+    uid=116_70 button "Clear Formatting"
+    uid=116_71 button "Undo"
+    uid=116_72 button "Redo" disableable disabled
+    uid=116_73 textbox multiline value="This is a test note with bold text. Edited with auto-save.
+
+Hello Word-like Editor!
+
+	
+
+
+
+
+	
+
+
+
+
+
+
+
+
+
+
+	
+
+
+
+
+	
+
+
+
+
+
+
+
+
+
+
+	
+
+
+
+
+	
+
+
+
+
+
+"
+      uid=116_74 paragraph
+        uid=116_75 strong
+          uid=116_76 StaticText "This is a test note with bold text. Edited with auto-save."
+      uid=116_77 table
+        uid=116_78 row
+          uid=116_79 columnheader "Hello Word-like Editor!"
+            uid=116_80 paragraph
+              uid=117_9 StaticText "Hello Word-like Editor!"
+          uid=116_81 columnheader "  "
+            uid=116_82 paragraph
+          uid=116_83 columnheader "  "
+            uid=116_84 paragraph
+        uid=116_85 row
+          uid=116_86 cell "  "
+            uid=116_87 paragraph
+          uid=116_88 cell "  "
+            uid=116_89 paragraph
+          uid=116_90 cell "  "
+            uid=116_91 paragraph
+        uid=116_92 row
+          uid=116_93 cell "  "
+            uid=116_94 paragraph
+          uid=116_95 cell "  "
+            uid=116_96 paragraph
+          uid=116_97 cell "  "
+            uid=116_98 paragraph
+      uid=116_99 paragraph
+    uid=116_100 StaticText "13"
+    uid=116_101 StaticText " words"
+    uid=116_102 StaticText "81"
+    uid=116_103 StaticText " characters"
+    uid=116_104 StaticText "~"
+    uid=116_105 StaticText "1"
+    uid=116_106 StaticText " page"
+    uid=117_10 StaticText "Saved at "
+    uid=117_11 StaticText "12:43 AM"
+  uid=116_109 button "Open Next.js Dev Tools" expandable haspopup="menu"
+  uid=116_110 alert atomic live="assertive" relevant="additions text"
