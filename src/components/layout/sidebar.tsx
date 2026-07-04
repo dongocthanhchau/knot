@@ -5,7 +5,6 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
-import { Separator } from "@/components/ui/separator";
 import {
   Tooltip,
   TooltipContent,
@@ -44,7 +43,7 @@ export function Sidebar({ collapsed, onToggle }: SidebarProps) {
       )}
     >
       {/* Logo / Header */}
-      <div className="flex h-14 items-center gap-2 px-4">
+      <div className="flex h-14 items-center gap-2 border-b px-4">
         <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-primary">
           <Brain className="h-4 w-4 text-primary-foreground" />
         </div>
@@ -52,8 +51,6 @@ export function Sidebar({ collapsed, onToggle }: SidebarProps) {
           <span className="text-sm font-semibold tracking-tight">Knot</span>
         )}
       </div>
-
-      <Separator />
 
       {/* Navigation */}
       <nav className="flex-1 space-y-1 p-2">
