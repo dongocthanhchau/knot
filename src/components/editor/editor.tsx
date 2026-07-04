@@ -547,7 +547,7 @@ export function Editor({
           margin-bottom: 0.25rem;
         }
         .editor-container .ProseMirror pre {
-          background: hsl(var(--muted));
+          background: var(--muted);
           border-radius: 0.5rem;
           padding: 1rem;
           font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
@@ -563,24 +563,24 @@ export function Editor({
           color: inherit;
         }
         .editor-container .ProseMirror code {
-          background: hsl(var(--muted));
+          background: var(--muted);
           border-radius: 0.25rem;
           padding: 0.125rem 0.25rem;
           font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
           font-size: 0.875em;
         }
         .editor-container .ProseMirror blockquote {
-          border-left: 2px solid hsl(var(--primary));
+          border-left: 3px solid var(--primary);
           padding-left: 1rem;
           margin-left: 0;
           margin-right: 0;
           margin-bottom: 0.5rem;
           font-style: italic;
-          color: hsl(var(--muted-foreground));
+          color: var(--muted-foreground);
         }
         .editor-container .ProseMirror hr {
           border: none;
-          border-top: 1px solid hsl(var(--border));
+          border-top: 1px solid var(--border);
           margin: 1.5rem 0;
         }
         .editor-container .ProseMirror table {
@@ -591,18 +591,18 @@ export function Editor({
         }
         .editor-container .ProseMirror th,
         .editor-container .ProseMirror td {
-          border: 1px solid hsl(var(--border));
+          border: 1px solid var(--border);
           padding: 0.5rem 0.75rem;
           text-align: left;
           vertical-align: top;
           min-width: 80px;
         }
         .editor-container .ProseMirror th {
-          background: hsl(var(--muted));
+          background: var(--muted);
           font-weight: 600;
         }
         .editor-container .ProseMirror a {
-          color: hsl(var(--primary));
+          color: var(--primary);
           text-decoration: underline;
           cursor: pointer;
         }
@@ -613,14 +613,14 @@ export function Editor({
           margin: 0.75rem 0;
         }
         .editor-container .ProseMirror p.is-editor-empty:first-child::before {
-          color: hsl(var(--muted-foreground));
+          color: var(--muted-foreground);
           content: attr(data-placeholder);
           float: left;
           height: 0;
           pointer-events: none;
         }
         .editor-container .ProseMirror p.is-empty::before {
-          color: hsl(var(--muted-foreground));
+          color: var(--muted-foreground);
           content: attr(data-placeholder);
           float: left;
           height: 0;
@@ -652,7 +652,7 @@ export function Editor({
           flex: 1;
         }
         .editor-container .ProseMirror .selectedCell {
-          background: hsl(var(--accent));
+          background: var(--accent);
         }
       `}</style>
     </div>
