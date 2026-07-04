@@ -37,6 +37,11 @@ import {
   Undo,
   Redo,
   Highlighter,
+  Plus,
+  Trash2,
+  Merge,
+  Split,
+  ArrowUpDown,
 } from "lucide-react";
 
 import { cn } from "@/lib/utils";
@@ -118,8 +123,11 @@ export function Editor({
   className,
 }: EditorProps) {
   const [slashMenuOpen, setSlashMenuOpen] = useState(false);
+  const [slashMenuPos, setSlashMenuPos] = useState<{ x: number; y: number } | null>(null);
   const slashMenuRef = useRef<HTMLDivElement>(null);
   const processingSlash = useRef(false);
+  const [tableMenuPos, setTableMenuPos] = useState<{ x: number; y: number } | null>(null);
+  const tableMenuRef = useRef<HTMLDivElement>(null);
 
   const editor = useEditor({
     extensions: [
@@ -132,7 +140,7 @@ export function Editor({
       Underline,
       TextAlign.configure({ types: ["heading", "paragraph"] }),
       ImageExt.configure({ inline: false, allowBase64: true }),
-      Table.configure({ resizable: true }),
+      Table.configure({ resizable: true, allowTableNodeSelection: true }),
       TableRow,
       TableCell,
       TableHeader,
@@ -162,9 +170,34 @@ export function Editor({
         pos === 1 &&
         $from.parent.type.name === "paragraph"
       ) {
+        const coords = ed.view.coordsAtPos(ed.state.selection.anchor);
+        if (coords) {
+          const estimatedHeight = SLASH_OPTIONS.length * 36 + 12;
+          const spaceBelow = window.innerHeight - coords.bottom;
+          const top = spaceBelow >= estimatedHeight
+            ? coords.bottom + 4
+            : Math.max(8, coords.top - estimatedHeight);
+          setSlashMenuPos({ x: coords.left, y: top });
+        }
         setSlashMenuOpen(true);
       } else if (slashMenuOpen) {
         setSlashMenuOpen(false);
+        setSlashMenuPos(null);
+      }
+    },
+    onSelectionUpdate: ({ editor: ed }) => {
+      if (ed.isActive("table")) {
+        const coords = ed.view.coordsAtPos(ed.state.selection.anchor);
+        if (coords) {
+          const estimatedHeight = 280;
+          const spaceBelow = window.innerHeight - coords.bottom;
+          const top = spaceBelow >= estimatedHeight
+            ? coords.bottom + 4
+            : Math.max(8, coords.top - estimatedHeight);
+          setTableMenuPos({ x: coords.left, y: top });
+        }
+      } else {
+        setTableMenuPos(null);
       }
     },
   });
@@ -189,6 +222,7 @@ export function Editor({
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === "Escape") {
         setSlashMenuOpen(false);
+        setSlashMenuPos(null);
         e.preventDefault();
       }
     };
@@ -206,6 +240,7 @@ export function Editor({
         !slashMenuRef.current.contains(e.target as Node)
       ) {
         setSlashMenuOpen(false);
+        setSlashMenuPos(null);
       }
     };
 
@@ -213,12 +248,29 @@ export function Editor({
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, [slashMenuOpen]);
 
+  useEffect(() => {
+    if (!tableMenuPos) return;
+
+    const handleClickOutside = (e: MouseEvent) => {
+      if (
+        tableMenuRef.current &&
+        !tableMenuRef.current.contains(e.target as Node)
+      ) {
+        setTableMenuPos(null);
+      }
+    };
+
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, [tableMenuPos]);
+
   const handleSlashSelect = useCallback(
     (action: SlashAction) => {
       if (!editor) return;
 
       processingSlash.current = true;
       setSlashMenuOpen(false);
+      setSlashMenuPos(null);
 
       const pos = editor.state.selection.$from.pos;
 
@@ -476,25 +528,104 @@ export function Editor({
         </div>
       )}
 
-      {slashMenuOpen && (
+      {slashMenuOpen && slashMenuPos && (
         <div
           ref={slashMenuRef}
-          className="flex flex-wrap items-center gap-0.5 border-b px-2 py-1.5"
+          style={{
+            position: "fixed",
+            left: slashMenuPos.x,
+            top: slashMenuPos.y,
+            zIndex: 9999,
+          }}
+          className="w-56 rounded-lg border bg-popover p-1 shadow-lg"
         >
-          <span className="mr-1 text-xs text-muted-foreground">Quick insert:</span>
-          {SLASH_OPTIONS.map((option) => (
-            <Button
-              key={option.action}
-              variant="ghost"
-              size="sm"
-              onClick={() => handleSlashSelect(option.action)}
-              title={option.label}
-              className="gap-1"
+          {SLASH_OPTIONS.map((option) => {
+            const Icon = option.icon;
+            return (
+              <button
+                key={option.action}
+                type="button"
+                onClick={() => handleSlashSelect(option.action)}
+                className="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-sm text-popover-foreground hover:bg-accent hover:text-accent-foreground"
+              >
+                <Icon className="size-4 shrink-0" />
+                <span>{option.label}</span>
+              </button>
+            );
+          })}
+        </div>
+      )}
+
+      {tableMenuPos && (
+        <div
+          ref={tableMenuRef}
+          style={{
+            position: "fixed",
+            left: tableMenuPos.x,
+            top: tableMenuPos.y,
+            zIndex: 9999,
+          }}
+          className="w-56 rounded-lg border bg-popover p-1 shadow-lg"
+        >
+          <div className="mb-1 px-2 py-1 text-xs font-medium text-muted-foreground">
+            Table
+          </div>
+          <div className="grid grid-cols-2 gap-px">
+            <TablePopupButton
+              label="Column before"
+              icon={Plus}
+              shortcut="←"
+              onClick={() => editor.chain().focus().addColumnBefore().run()}
+            />
+            <TablePopupButton
+              label="Column after"
+              icon={Plus}
+              shortcut="→"
+              onClick={() => editor.chain().focus().addColumnAfter().run()}
+            />
+            <TablePopupButton
+              label="Row above"
+              icon={Plus}
+              shortcut="↑"
+              onClick={() => editor.chain().focus().addRowBefore().run()}
+            />
+            <TablePopupButton
+              label="Row below"
+              icon={Plus}
+              shortcut="↓"
+              onClick={() => editor.chain().focus().addRowAfter().run()}
+            />
+          </div>
+          <div className="mt-1 border-t pt-1">
+            <TablePopupButton
+              label="Toggle header"
+              icon={ArrowUpDown}
+              onClick={() => editor.chain().focus().toggleHeaderCell().run()}
+            />
+            <TablePopupButton
+              label="Merge cells"
+              icon={Merge}
+              onClick={() => editor.chain().focus().mergeCells().run()}
+            />
+            <TablePopupButton
+              label="Split cell"
+              icon={Split}
+              onClick={() => editor.chain().focus().splitCell().run()}
+            />
+          </div>
+          <div className="mt-1 border-t pt-1">
+            <button
+              type="button"
+              onClick={() => {
+                editor.chain().focus().deleteTable().run();
+                setTableMenuPos(null);
+              }}
+              className="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-sm text-destructive hover:bg-destructive/10"
             >
-              <option.icon className="size-3.5" />
-              <span className="text-xs">{option.label}</span>
-            </Button>
-          ))}
+              <Trash2 className="size-4" />
+              <span>Delete table</span>
+            </button>
+          </div>
         </div>
       )}
 
@@ -594,10 +725,12 @@ export function Editor({
           border: 1px solid var(--border);
           padding: 0.5rem 0.75rem;
           text-align: left;
+          position: relative;
           vertical-align: top;
           min-width: 80px;
         }
         .editor-container .ProseMirror th {
+          position: relative;
           background: var(--muted);
           font-weight: 600;
         }
@@ -651,10 +784,55 @@ export function Editor({
         .editor-container .ProseMirror ul[data-type="taskList"] li > div {
           flex: 1;
         }
+        .editor-container .ProseMirror .tableWrapper {
+          overflow-x: auto;
+          margin-bottom: 0.75rem;
+        }
+        .editor-container .ProseMirror table {
+          table-layout: fixed;
+          position: relative;
+        }
+        .editor-container .ProseMirror .column-resize-handle {
+          position: absolute;
+          right: -2px;
+          top: 0;
+          bottom: 0;
+          width: 4px;
+          background: var(--primary);
+          cursor: col-resize;
+          z-index: 20;
+        }
         .editor-container .ProseMirror .selectedCell {
           background: var(--accent);
+          outline: 2px solid var(--primary);
         }
       `}</style>
     </div>
+  );
+}
+
+function TablePopupButton({
+  label,
+  icon: Icon,
+  shortcut,
+  onClick,
+}: {
+  label: string;
+  icon: React.ComponentType<{ className?: string }>;
+  shortcut?: string;
+  onClick: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-sm text-popover-foreground hover:bg-accent hover:text-accent-foreground"
+    >
+      <Icon className="size-4 shrink-0" />
+      <span className="flex-1 text-left">{label}</span>
+      {shortcut && (
+        <span className="text-xs text-muted-foreground">{shortcut}</span>
+      )}
+    </button>
   );
 }
