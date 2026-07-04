@@ -14,6 +14,7 @@ import {
   LayoutDashboard,
   FileText,
   Tags,
+  Trash2,
   Settings,
   ChevronLeft,
   ChevronRight,
@@ -24,6 +25,7 @@ const navItems = [
   { href: "/", label: "Dashboard", icon: LayoutDashboard },
   { href: "/notes", label: "Notes", icon: FileText },
   { href: "/tags", label: "Tags", icon: Tags },
+  { href: "/notes/trash", label: "Trash", icon: Trash2 },
   { href: "/settings", label: "Settings", icon: Settings },
 ];
 

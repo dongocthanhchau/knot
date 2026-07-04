@@ -1,5 +1,4 @@
-import Link from "next/link";
-import { FileText, Plus } from "lucide-react";
+import { NoteList } from "@/components/notes/note-list";
 
 export default async function NotesPage() {
   return (
@@ -13,15 +12,7 @@ export default async function NotesPage() {
         </div>
       </div>
 
-      <div className="rounded-lg border bg-card text-card-foreground shadow-sm p-8 flex flex-col items-center justify-center gap-3 text-center">
-        <FileText className="h-8 w-8 text-muted-foreground" />
-        <div>
-          <h2 className="text-lg font-semibold">No notes yet</h2>
-          <p className="text-sm text-muted-foreground">
-            Your notes will appear here once you start creating them.
-          </p>
-        </div>
-      </div>
+      <NoteList />
     </div>
   );
 }
