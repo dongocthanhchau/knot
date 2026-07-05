@@ -7,7 +7,7 @@ import StarterKit from "@tiptap/starter-kit";
 import Underline from "@tiptap/extension-underline";
 import TextAlign from "@tiptap/extension-text-align";
 import ImageExt from "@tiptap/extension-image";
-import { Table } from "@tiptap/extension-table";
+import { CustomTable } from "./table-caption-ext";
 import { CellSelection } from "@tiptap/pm/tables";
 
 import TableRow from "@tiptap/extension-table-row";
@@ -53,9 +53,29 @@ import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import { Toolbar } from "./toolbar";
 import { TablePopupMenu } from "./table-popup-menu";
+import { ImagePopupMenu } from "./image-popup-menu";
+import { Figure, FigCaption } from "./figure-ext";
 import { StatusBar, type SaveStatus } from "./status-bar";
 
 const lowlight = createLowlight(common);
+
+/**
+ * Migrate legacy <caption>text</caption> inside <table> to data-caption="text".
+ * Prevents ProseMirror from parsing caption text content as table rows.
+ */
+function migrateTableCaption(html: string): string {
+  return html.replace(
+    /<table([^>]*)>\s*<caption>([^<]*)<\/caption>/gi,
+    (_match, tableAttrs, captionText) => {
+      const escaped = captionText
+        .replace(/&/g, "&amp;")
+        .replace(/"/g, "&quot;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;");
+      return `<table${tableAttrs} data-caption="${escaped}">`;
+    },
+  );
+}
 
 interface EditorProps {
   content: string;
@@ -142,10 +162,14 @@ export function Editor({
   const [tableMenuPos, setTableMenuPos] = useState<{ x: number; y: number } | null>(null);
   const tableMenuRef = useRef<HTMLDivElement>(null);
   const tableHideTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const [imageMenuPos, setImageMenuPos] = useState<{ x: number; y: number } | null>(null);
+  const imageMenuRef = useRef<HTMLDivElement>(null);
+  const imageHideTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
     return () => {
       if (tableHideTimerRef.current) clearTimeout(tableHideTimerRef.current);
+      if (imageHideTimerRef.current) clearTimeout(imageHideTimerRef.current);
     };
   }, []);
 
@@ -159,11 +183,22 @@ export function Editor({
       }),
       Underline,
       TextAlign.configure({ types: ["heading", "paragraph", "tableCell", "tableHeader"] }),
-      ImageExt.configure({ inline: false, allowBase64: true }),
-      Table.configure({ resizable: true, allowTableNodeSelection: true }),
+      ImageExt.configure({
+        inline: false,
+        allowBase64: true,
+        resize: {
+          enabled: true,
+          directions: ["bottom-right"],
+          minWidth: 100,
+          alwaysPreserveAspectRatio: true,
+        },
+      }),
+      CustomTable.configure({ resizable: true, allowTableNodeSelection: true }),
       TableRow,
       CustomTableCell,
       CustomTableHeader,
+      Figure,
+      FigCaption,
       LinkExt.configure({
         openOnClick: false,
         autolink: true,
@@ -179,7 +214,7 @@ export function Editor({
       Subscript,
       Superscript,
     ],
-    content,
+    content: migrateTableCaption(content),
     editable: !readOnly,
     onUpdate: ({ editor: ed }) => {
       onUpdate?.(ed.getHTML());
@@ -247,6 +282,34 @@ export function Editor({
         }
       } else {
         setTableMenuPos(null);
+      }
+
+      // Image / figure popup (independent of table)
+      const selectionImage =
+        ed.state.doc.nodeAt(ed.state.selection.from)?.type.name === "image";
+      const hasImage =
+        ed.isActive("image") || ed.isActive("figure") || selectionImage;
+
+      if (hasImage) {
+        if (imageHideTimerRef.current) {
+          clearTimeout(imageHideTimerRef.current);
+          imageHideTimerRef.current = null;
+        }
+        const anchor = ed.state.selection.anchor;
+        const coords = ed.view.coordsAtPos(anchor);
+        if (coords) {
+          setImageMenuPos({
+            x: Math.min(coords.right + 8, window.innerWidth - 200),
+            y: coords.bottom + 4,
+          });
+        }
+      } else if (imageMenuPos) {
+        if (!imageHideTimerRef.current) {
+          imageHideTimerRef.current = setTimeout(() => {
+            setImageMenuPos(null);
+            imageHideTimerRef.current = null;
+          }, 150);
+        }
       }
     },
   });
@@ -316,6 +379,25 @@ export function Editor({
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, [tableMenuPos]);
 
+  useEffect(() => {
+    if (!imageMenuPos) return;
+
+    const handleClickOutside = (e: MouseEvent) => {
+      if (
+        imageMenuRef.current &&
+        !imageMenuRef.current.contains(e.target as Node)
+      ) {
+        const isImage = (e.target as Element | null)?.closest?.("img");
+        if (!isImage) {
+          setImageMenuPos(null);
+        }
+      }
+    };
+
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, [imageMenuPos]);
+
   const handleSlashSelect = useCallback(
     (action: SlashAction) => {
       if (!editor) return;
@@ -384,7 +466,12 @@ export function Editor({
     if (!editor) return;
     const url = window.prompt("Enter image URL", "https://");
     if (url === null || url === "") return;
-    editor.chain().focus().setImage({ src: url }).run();
+    editor
+      .chain()
+      .focus()
+      .setImage({ src: url })
+      .addFigure()
+      .run();
   }, [editor]);
 
   if (!editor) return null;
@@ -435,6 +522,16 @@ export function Editor({
             className="z-[9999] rounded-lg border bg-popover p-0 shadow-lg"
           >
             <TablePopupMenu editor={editor} />
+          </div>
+        )}
+
+        {imageMenuPos && (
+          <div
+            ref={imageMenuRef}
+            style={{ position: "fixed", left: imageMenuPos.x, top: imageMenuPos.y }}
+            className="z-[9999] rounded-lg border bg-popover p-0 shadow-lg"
+          >
+            <ImagePopupMenu />
           </div>
         )}
 
@@ -563,6 +660,52 @@ export function Editor({
             border-radius: 0.375rem;
             margin: 0.75rem 0;
           }
+          .editor-container .ProseMirror [data-resize-container] img {
+            margin: 0;
+          }
+          .editor-container .ProseMirror figure {
+            margin: 0.75rem 0;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+          }
+          .editor-container .ProseMirror figcaption {
+            font-size: 0.875rem;
+            color: var(--muted-foreground);
+            font-style: italic;
+            margin-top: 0.25rem;
+          }
+          .editor-container .ProseMirror figcaption:empty::before {
+            content: "Caption";
+            color: var(--muted-foreground);
+            opacity: 0.5;
+            font-style: italic;
+          }
+          .editor-container .ProseMirror caption {
+            font-size: 0.875rem;
+            color: var(--muted-foreground);
+            font-style: italic;
+            margin-bottom: 0.25rem;
+            text-align: center;
+            caption-side: top;
+          }
+          .editor-container .ProseMirror .table-caption-input {
+            width: 100%;
+            border: none;
+            background: transparent;
+            font: inherit;
+            font-size: 0.875rem;
+            color: var(--muted-foreground);
+            font-style: italic;
+            text-align: center;
+            outline: none;
+            padding: 0;
+          }
+          .editor-container .ProseMirror .table-caption-input::placeholder {
+            color: var(--muted-foreground);
+            opacity: 0.5;
+            font-style: italic;
+          }
           .editor-container .ProseMirror p.is-editor-empty:first-child::before {
             color: var(--muted-foreground);
             content: attr(data-placeholder);
@@ -624,19 +767,55 @@ export function Editor({
             background: var(--accent);
             outline: 2px solid var(--primary);
           }
+          .editor-container .ProseMirror [data-resize-handle] {
+            position: absolute;
+            width: 10px;
+            height: 10px;
+            background: var(--primary);
+            border: 2px solid hsl(var(--background));
+            border-radius: 2px;
+            z-index: 10;
+            opacity: 0;
+            transition: opacity 0.15s ease;
+          }
+          .editor-container .ProseMirror [data-resize-container]:hover [data-resize-handle],
+          .editor-container .ProseMirror [data-resize-container][data-resize-state="true"] [data-resize-handle] {
+            opacity: 1;
+          }
+          .editor-container .ProseMirror [data-resize-handle="bottom-right"] {
+            cursor: nwse-resize;
+          }
+          .editor-container .ProseMirror [data-resize-handle="bottom-left"] {
+            cursor: nesw-resize;
+          }
+          .editor-container .ProseMirror [data-resize-handle="top-right"] {
+            cursor: nesw-resize;
+          }
+          .editor-container .ProseMirror [data-resize-handle="top-left"] {
+            cursor: nwse-resize;
+          }
+          .editor-container .ProseMirror [data-resize-handle="top"],
+          .editor-container .ProseMirror [data-resize-handle="bottom"] {
+            cursor: ns-resize;
+          }
+          .editor-container .ProseMirror [data-resize-handle="left"],
+          .editor-container .ProseMirror [data-resize-handle="right"] {
+            cursor: ew-resize;
+          }
+          .editor-container .ProseMirror [data-resize-container][data-resize-state="true"] {
+            outline: 2px solid var(--primary);
+            outline-offset: 2px;
+            border-radius: 3px;
+          }
 
           .editor-container.knot-editor {
             border: none;
             border-radius: 0;
-            background: #f5f5f5;
             height: 100%;
             width: 100%;
             display: flex;
             flex-direction: column;
             min-height: 0;
-          }
-          .dark .editor-container.knot-editor {
-            background: #1a1a2e;
           }
           .knot-editor-toolbar {
             border-bottom: 1px solid hsl(var(--border));
@@ -649,7 +828,7 @@ export function Editor({
           .knot-editor-page {
             max-width: 860px;
             margin: 0 auto;
-            background: hsl(var(--background));
+            background: var(--background);
             box-shadow: 0 1px 3px rgba(0,0,0,0.12), 0 1px 6px rgba(0,0,0,0.08);
             border-radius: 4px;
             min-height: 500px;
@@ -888,6 +1067,16 @@ export function Editor({
         </div>
       )}
 
+      {imageMenuPos && (
+        <div
+          ref={imageMenuRef}
+          style={{ position: "fixed", left: imageMenuPos.x, top: imageMenuPos.y }}
+          className="z-[9999] rounded-lg border bg-popover p-0 shadow-lg"
+        >
+          <ImagePopupMenu />
+        </div>
+      )}
+
       <div className="px-4 py-4 min-h-[400px] cursor-text">
         <EditorContent editor={editor} />
       </div>
@@ -1004,6 +1193,52 @@ export function Editor({
           border-radius: 0.375rem;
           margin: 0.75rem 0;
         }
+        .editor-container .ProseMirror [data-resize-container] img {
+          margin: 0;
+        }
+        .editor-container .ProseMirror figure {
+          margin: 0.75rem 0;
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+        }
+        .editor-container .ProseMirror figcaption {
+          font-size: 0.875rem;
+          color: var(--muted-foreground);
+          font-style: italic;
+          margin-top: 0.25rem;
+        }
+        .editor-container .ProseMirror figcaption:empty::before {
+          content: "Caption";
+          color: var(--muted-foreground);
+          opacity: 0.5;
+          font-style: italic;
+        }
+        .editor-container .ProseMirror caption {
+          font-size: 0.875rem;
+          color: var(--muted-foreground);
+          font-style: italic;
+          margin-bottom: 0.25rem;
+          text-align: center;
+          caption-side: top;
+        }
+        .editor-container .ProseMirror .table-caption-input {
+          width: 100%;
+          border: none;
+          background: transparent;
+          font: inherit;
+          font-size: 0.875rem;
+          color: var(--muted-foreground);
+          font-style: italic;
+          text-align: center;
+          outline: none;
+          padding: 0;
+        }
+        .editor-container .ProseMirror .table-caption-input::placeholder {
+          color: var(--muted-foreground);
+          opacity: 0.5;
+          font-style: italic;
+        }
         .editor-container .ProseMirror p.is-editor-empty:first-child::before {
           color: var(--muted-foreground);
           content: attr(data-placeholder);
@@ -1064,6 +1299,46 @@ export function Editor({
         .editor-container .ProseMirror .selectedCell {
           background: var(--accent);
           outline: 2px solid var(--primary);
+        }
+        .editor-container .ProseMirror [data-resize-handle] {
+          position: absolute;
+          width: 10px;
+          height: 10px;
+          background: var(--primary);
+          border: 2px solid hsl(var(--background));
+          border-radius: 2px;
+          z-index: 10;
+          opacity: 0;
+          transition: opacity 0.15s ease;
+        }
+        .editor-container .ProseMirror [data-resize-container]:hover [data-resize-handle],
+        .editor-container .ProseMirror [data-resize-container][data-resize-state="true"] [data-resize-handle] {
+          opacity: 1;
+        }
+        .editor-container .ProseMirror [data-resize-handle="bottom-right"] {
+          cursor: nwse-resize;
+        }
+        .editor-container .ProseMirror [data-resize-handle="bottom-left"] {
+          cursor: nesw-resize;
+        }
+        .editor-container .ProseMirror [data-resize-handle="top-right"] {
+          cursor: nesw-resize;
+        }
+        .editor-container .ProseMirror [data-resize-handle="top-left"] {
+          cursor: nwse-resize;
+        }
+        .editor-container .ProseMirror [data-resize-handle="top"],
+        .editor-container .ProseMirror [data-resize-handle="bottom"] {
+          cursor: ns-resize;
+        }
+        .editor-container .ProseMirror [data-resize-handle="left"],
+        .editor-container .ProseMirror [data-resize-handle="right"] {
+          cursor: ew-resize;
+        }
+        .editor-container .ProseMirror [data-resize-container][data-resize-state="true"] {
+          outline: 2px solid var(--primary);
+          outline-offset: 2px;
+          border-radius: 3px;
         }
       `}</style>
     </div>

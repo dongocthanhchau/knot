@@ -1,6 +1,7 @@
 "use client";
 
-import { useState, useRef, useLayoutEffect, useEffect } from "react";
+import { useState, useRef, useLayoutEffect, useEffect, forwardRef } from "react";
+import { createPortal } from "react-dom";
 import type { Editor } from "@tiptap/react";
 import {
   Bold,
@@ -22,6 +23,14 @@ import {
   Subscript,
   Superscript,
   ChevronDown,
+  Quote,
+  Code2,
+  SeparatorHorizontal,
+  Link,
+  Image as ImageIcon,
+  Heading1,
+  Heading2,
+  Heading3,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -60,19 +69,13 @@ const TEXT_COLORS = [
   "#674ea7", "#a64d79", "#d5a6bd",
 ];
 
-function ToolbarButton({
-  onClick,
-  isActive,
-  disabled,
-  title,
-  icon: Icon,
-}: {
+const ToolbarButton = forwardRef<HTMLButtonElement, {
   onClick: () => void;
   isActive?: boolean;
   disabled?: boolean;
   title: string;
   icon: React.ElementType;
-}) {
+}>(({ onClick, isActive, disabled, title, icon: Icon }, ref) => {
   return (
     <Button
       variant="ghost"
@@ -80,19 +83,22 @@ function ToolbarButton({
       onClick={onClick}
       disabled={disabled}
       title={title}
+      ref={ref}
       className={cn(isActive && "bg-accent text-accent-foreground")}
     >
       <Icon className="size-4" />
     </Button>
   );
-}
+});
 
 function OverflowMenuContent({
   editor,
   groupIdx,
+  imageInputRef,
 }: {
   editor: Editor;
   groupIdx: number;
+  imageInputRef: React.RefObject<HTMLInputElement | null>;
 }) {
   switch (groupIdx) {
     case 0:
@@ -275,6 +281,82 @@ function OverflowMenuContent({
           <RemoveFormatting className="size-4" /> Clear Formatting
         </DropdownMenuItem>
       );
+    case 9:
+      return (
+        <>
+          <DropdownMenuItem
+            onClick={() => editor.chain().focus().setParagraph().run()}
+          >
+            Paragraph
+          </DropdownMenuItem>
+          <DropdownMenuItem
+            onClick={() =>
+              editor.chain().focus().toggleHeading({ level: 1 }).run()
+            }
+          >
+            <Heading1 className="size-4" /> H1
+          </DropdownMenuItem>
+          <DropdownMenuItem
+            onClick={() =>
+              editor.chain().focus().toggleHeading({ level: 2 }).run()
+            }
+          >
+            <Heading2 className="size-4" /> H2
+          </DropdownMenuItem>
+          <DropdownMenuItem
+            onClick={() =>
+              editor.chain().focus().toggleHeading({ level: 3 }).run()
+            }
+          >
+            <Heading3 className="size-4" /> H3
+          </DropdownMenuItem>
+        </>
+      );
+    case 10:
+      return (
+        <>
+          <DropdownMenuItem
+            onClick={() =>
+              editor.chain().focus().toggleBlockquote().run()
+            }
+          >
+            <Quote className="size-4" /> Blockquote
+          </DropdownMenuItem>
+          <DropdownMenuItem
+            onClick={() =>
+              editor.chain().focus().toggleCodeBlock().run()
+            }
+          >
+            <Code2 className="size-4" /> Code Block
+          </DropdownMenuItem>
+          <DropdownMenuItem
+            onClick={() =>
+              editor.chain().focus().setHorizontalRule().run()
+            }
+          >
+            <SeparatorHorizontal className="size-4" /> Horizontal Rule
+          </DropdownMenuItem>
+        </>
+      );
+    case 11:
+      return (
+        <>
+          <DropdownMenuItem
+            onClick={() => {
+              const url = window.prompt("Enter URL:", "https://");
+              if (!url) return;
+              editor.chain().focus().setLink({ href: url }).run();
+            }}
+          >
+            <Link className="size-4" /> Link
+          </DropdownMenuItem>
+          <DropdownMenuItem
+            onClick={() => imageInputRef.current?.click()}
+          >
+            <ImageIcon className="size-4" /> Image
+          </DropdownMenuItem>
+        </>
+      );
     default:
       return null;
   }
@@ -282,7 +364,8 @@ function OverflowMenuContent({
 
 export function Toolbar({ editor }: { editor: Editor | null }) {
   const [colorPickerOpen, setColorPickerOpen] = useState(false);
-  const colorPickerRef = useRef<HTMLDivElement>(null);
+  const colorPickerBtnRef = useRef<HTMLButtonElement>(null);
+  const colorPickerPopoverRef = useRef<HTMLDivElement>(null);
 
   const containerRef = useRef<HTMLDivElement>(null);
   const [hiddenGroups, setHiddenGroups] = useState<number[]>([]);
@@ -293,36 +376,39 @@ export function Toolbar({ editor }: { editor: Editor | null }) {
     if (!container) return;
 
     const calculate = () => {
-      const containerRect = container.getBoundingClientRect();
-      const containerWidth = containerRect.width;
-
-      const groups = Array.from(
-        container.querySelectorAll<HTMLElement>("[data-group]")
+      const groupEls = Array.from(
+        container.querySelectorAll<HTMLElement>("[data-group]"),
       );
-      if (groups.length === 0) return;
+      if (groupEls.length === 0) return;
 
+      const containerWidth = container.clientWidth;
+
+      // Measure positions ONCE (on mount when all groups are visible)
       if (groupEndsRef.current.length === 0) {
+        const containerRect = container.getBoundingClientRect();
         const containerLeft = containerRect.left;
-        groups.forEach((g) => {
+        groupEls.forEach((g) => {
           const idx = parseInt(g.dataset.group!);
           const rect = g.getBoundingClientRect();
           groupEndsRef.current[idx] = rect.right - containerLeft;
         });
       }
 
+      // Recalculate which groups fit using cached positions
       const newHidden: number[] = [];
-      for (let i = 0; i < groups.length; i++) {
-        const rightEdge = groupEndsRef.current[i];
-        if (rightEdge > containerWidth) {
-          newHidden.push(i);
+      groupEls.forEach((g) => {
+        const idx = parseInt(g.dataset.group!);
+        const rightEdge = groupEndsRef.current[idx];
+        if (rightEdge !== undefined && rightEdge > containerWidth) {
+          newHidden.push(idx);
         }
-      }
+      });
 
-      const prevStr = JSON.stringify(hiddenGroups);
-      const newStr = JSON.stringify(newHidden);
-      if (newStr !== prevStr) {
-        setHiddenGroups(newHidden);
-      }
+      setHiddenGroups((prev) => {
+        const prevStr = JSON.stringify(prev);
+        const newStr = JSON.stringify(newHidden);
+        return newStr !== prevStr ? newHidden : prev;
+      });
     };
 
     calculate();
@@ -336,8 +422,10 @@ export function Toolbar({ editor }: { editor: Editor | null }) {
     if (!colorPickerOpen) return;
     const handleClickOutside = (e: MouseEvent) => {
       if (
-        colorPickerRef.current &&
-        !colorPickerRef.current.contains(e.target as Node)
+        colorPickerPopoverRef.current &&
+        !colorPickerPopoverRef.current.contains(e.target as Node) &&
+        colorPickerBtnRef.current &&
+        !colorPickerBtnRef.current.contains(e.target as Node)
       ) {
         setColorPickerOpen(false);
       }
@@ -352,6 +440,22 @@ export function Toolbar({ editor }: { editor: Editor | null }) {
     editor.getAttributes("textStyle").fontFamily || "";
   const currentFontSize =
     (editor.getAttributes("textStyle").fontSize || "").replace("px", "");
+  const currentHeading = editor.isActive("heading", { level: 1 })
+    ? "1"
+    : editor.isActive("heading", { level: 2 })
+      ? "2"
+      : editor.isActive("heading", { level: 3 })
+        ? "3"
+        : "0";
+
+  const imageInputRef = useRef<HTMLInputElement>(null);
+  const handleImageUpload = async (file: File) => {
+    const formData = new FormData();
+    formData.append("file", file);
+    const res = await fetch("/api/upload", { method: "POST", body: formData });
+    const { url } = await res.json();
+    editor?.chain().focus().setImage({ src: url }).addFigure().run();
+  };
 
   const isGroupHidden = (idx: number) => hiddenGroups.includes(idx);
   const isSepHidden = (idx: number) =>
@@ -360,8 +464,33 @@ export function Toolbar({ editor }: { editor: Editor | null }) {
   return (
     <div
       ref={containerRef}
-      className="flex flex-nowrap overflow-hidden items-center gap-0.5 px-2 py-1.5 bg-background"
+      className="flex flex-nowrap overflow-hidden items-center gap-0.5 px-2 py-1 bg-background border-b"
     >
+      {/* Heading select */}
+      <div data-group="9" className="flex-shrink-0 mr-1">
+        <select
+          value={currentHeading}
+          onChange={(e) => {
+            const val = e.target.value;
+            if (val === "0") {
+              editor.chain().focus().setParagraph().run();
+            } else {
+              editor
+                .chain()
+                .focus()
+                .toggleHeading({ level: Number(val) as 1 | 2 | 3 })
+                .run();
+            }
+          }}
+          className="h-7 rounded border bg-transparent px-2 text-xs font-medium min-w-[100px]"
+        >
+          <option value="0">Paragraph</option>
+          <option value="1">Heading 1</option>
+          <option value="2">Heading 2</option>
+          <option value="3">Heading 3</option>
+        </select>
+      </div>
+
       {/* Group 0: Font Family */}
       <div data-group="0" className={cn(isGroupHidden(0) && "hidden")}>
         <select
@@ -480,17 +609,22 @@ export function Toolbar({ editor }: { editor: Editor | null }) {
 
       {/* Group 3: Text Color */}
       <div data-group="3" className={cn(isGroupHidden(3) && "hidden")}>
-        <div className="relative" ref={colorPickerRef}>
-          <ToolbarButton
-            onClick={() => setColorPickerOpen((v) => !v)}
-            isActive={colorPickerOpen}
-            title="Text Color"
-            icon={Palette}
-          />
-          {colorPickerOpen && (
+        <ToolbarButton
+          onClick={() => setColorPickerOpen((v) => !v)}
+          isActive={colorPickerOpen}
+          title="Text Color"
+          icon={Palette}
+          ref={colorPickerBtnRef}
+        />
+        {colorPickerOpen &&
+          createPortal(
             <div
-              style={{ position: "absolute", zIndex: 50 }}
-              className="left-0 top-full mt-1 rounded-lg border bg-popover p-2 shadow-lg"
+              ref={colorPickerPopoverRef}
+              className="fixed z-[9999] mt-1 rounded-lg border bg-popover p-2 shadow-lg"
+              style={{
+                left: colorPickerBtnRef.current?.getBoundingClientRect().left ?? 0,
+                top: (colorPickerBtnRef.current?.getBoundingClientRect().bottom ?? 0) + 4,
+              }}
             >
               <div className="grid grid-cols-5 gap-1">
                 {TEXT_COLORS.map((color) => (
@@ -517,9 +651,9 @@ export function Toolbar({ editor }: { editor: Editor | null }) {
               >
                 Remove color
               </button>
-            </div>
+            </div>,
+            document.body
           )}
-        </div>
       </div>
 
       <div className={cn(isSepHidden(3) && "hidden")}>
@@ -635,29 +769,104 @@ export function Toolbar({ editor }: { editor: Editor | null }) {
         />
       </div>
 
-      {/* Overflow "More" button */}
-      {hiddenGroups.length > 0 && (
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button variant="ghost" size="sm">
-              <ChevronDown className="size-4" />
-            </Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="start">
-            {hiddenGroups.map((groupIdx, i) => (
-              <div key={groupIdx}>
-                {i > 0 && (
-                  <DropdownMenuSep />
-                )}
-                <OverflowMenuContent
-                  editor={editor}
-                  groupIdx={groupIdx}
-                />
-              </div>
-            ))}
-          </DropdownMenuContent>
-        </DropdownMenu>
-      )}
+      <div className={cn(isSepHidden(8) && "hidden")}>
+        <Separator orientation="vertical" className="mx-1 h-6" />
+      </div>
+
+      {/* Group 10: Blocks */}
+      <div
+        data-group="10"
+        className={cn(
+          "inline-flex items-center gap-0.5",
+          isGroupHidden(10) && "hidden"
+        )}
+      >
+        <ToolbarButton
+          onClick={() => editor.chain().focus().toggleBlockquote().run()}
+          isActive={editor.isActive("blockquote")}
+          title="Blockquote"
+          icon={Quote}
+        />
+        <ToolbarButton
+          onClick={() => editor.chain().focus().toggleCodeBlock().run()}
+          isActive={editor.isActive("codeBlock")}
+          title="Code Block"
+          icon={Code2}
+        />
+        <ToolbarButton
+          onClick={() => editor.chain().focus().setHorizontalRule().run()}
+          title="Horizontal Rule"
+          icon={SeparatorHorizontal}
+        />
+      </div>
+
+      <div className={cn(isSepHidden(10) && "hidden")}>
+        <Separator orientation="vertical" className="mx-1 h-6" />
+      </div>
+
+      {/* Group 11: Insert */}
+      <div
+        data-group="11"
+        className={cn(
+          "inline-flex items-center gap-0.5",
+          isGroupHidden(11) && "hidden"
+        )}
+      >
+        <ToolbarButton
+          onClick={() => {
+            const url = window.prompt("Enter URL:", "https://");
+            if (!url) return;
+            editor.chain().focus().setLink({ href: url }).run();
+          }}
+          isActive={editor.isActive("link")}
+          title="Link"
+          icon={Link}
+        />
+        <input
+          ref={imageInputRef}
+          type="file"
+          accept="image/*"
+          className="hidden"
+          onChange={(e) => {
+            const file = e.target.files?.[0];
+            if (file) handleImageUpload(file);
+          }}
+        />
+        <ToolbarButton
+          onClick={() => imageInputRef.current?.click()}
+          title="Image"
+          icon={ImageIcon}
+        />
+      </div>
+
+      {/* Overflow "More" button — always visible */}
+      <DropdownMenu>
+        <DropdownMenuTrigger asChild>
+          <Button
+            variant="ghost"
+            size="sm"
+            disabled={hiddenGroups.length === 0}
+            className={cn(
+              "flex-shrink-0",
+              hiddenGroups.length === 0 && "opacity-30"
+            )}
+          >
+            <ChevronDown className="size-4" />
+          </Button>
+        </DropdownMenuTrigger>
+        <DropdownMenuContent align="start" className="max-h-[60vh] overflow-y-auto">
+          {hiddenGroups.map((groupIdx, i) => (
+            <div key={groupIdx}>
+              {i > 0 && <DropdownMenuSep />}
+              <OverflowMenuContent
+                editor={editor}
+                groupIdx={groupIdx}
+                imageInputRef={imageInputRef}
+              />
+            </div>
+          ))}
+        </DropdownMenuContent>
+      </DropdownMenu>
 
       {/* Right side: Undo / Redo */}
       <div className="ml-auto flex items-center gap-0.5">
