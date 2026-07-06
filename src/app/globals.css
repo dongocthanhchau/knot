@@ -531,6 +531,48 @@ body {
   background-color: rgba(167, 139, 250, 0.12);
 }
 
+/* ─── DOCX Typography & Spacing ─── */
+
+.editor-gdocs-page .ProseMirror {
+  line-height: 1.5;
+}
+
+.editor-gdocs-page .ProseMirror p {
+  margin: 4px 0;
+  min-height: 1.15em;
+}
+
+.editor-gdocs-page .ProseMirror h1,
+.editor-gdocs-page .ProseMirror h2 {
+  margin: 14px 0 6px;
+}
+
+.editor-gdocs-page .ProseMirror h3,
+.editor-gdocs-page .ProseMirror h4 {
+  margin: 10px 0 4px;
+}
+
+.editor-gdocs-page .ProseMirror h5,
+.editor-gdocs-page .ProseMirror h6 {
+  margin: 8px 0 4px;
+}
+
+.editor-gdocs-page .ProseMirror ul,
+.editor-gdocs-page .ProseMirror ol {
+  margin: 4px 0;
+  padding-left: 24px;
+}
+
+.editor-gdocs-page .ProseMirror li {
+  margin: 2px 0;
+}
+
+.editor-gdocs-page .ProseMirror hr {
+  margin: 12px 0;
+  border: none;
+  border-top: 1px solid var(--border, #d0d0d0);
+}
+
 /* ─── Image Styles ─── */
 
 .editor-gdocs-page .ProseMirror img {
