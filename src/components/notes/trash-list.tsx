@@ -2,16 +2,8 @@
 
 import { useEffect, useState, useCallback } from "react";
 import { Trash2, RotateCcw, AlertTriangle } from "lucide-react";
-import { Button } from "@/components/ui/button";
-import { Skeleton } from "@/components/ui/skeleton";
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogDescription,
-  DialogFooter,
-} from "@/components/ui/dialog";
+import { Button, Dialog, DialogHeader } from "@astryxdesign/core";
+import { Skeleton } from "@astryxdesign/core";
 import {
   listTrashNotesAction,
   restoreNoteAction,
@@ -107,9 +99,9 @@ export function TrashList() {
         <div className="space-y-3">
           {Array.from({ length: 3 }).map((_, i) => (
             <div key={i} className="rounded-lg border p-4 space-y-2">
-              <Skeleton className="h-5 w-3/5" />
-              <Skeleton className="h-4 w-full" />
-              <Skeleton className="h-3 w-1/4" />
+              <Skeleton height={20} width="60%" radius={1} />
+              <Skeleton height={16} width="100%" radius={1} />
+              <Skeleton height={12} width="25%" radius={1} />
             </div>
           ))}
         </div>
@@ -119,9 +111,7 @@ export function TrashList() {
       {error && (
         <div className="rounded-lg border border-destructive/50 p-6 text-center space-y-3">
           <p className="text-sm text-destructive">{error}</p>
-          <Button variant="outline" size="sm" onClick={fetchNotes}>
-            Try again
-          </Button>
+          <Button variant="secondary" size="sm" label="Try again" onClick={fetchNotes} />
         </div>
       )}
 
@@ -162,23 +152,19 @@ export function TrashList() {
                 <Button
                   variant="ghost"
                   size="sm"
-                  className="h-8 gap-1.5 text-xs text-muted-foreground hover:text-foreground"
-                  disabled={actionId === note.id}
+                  label="Restore"
+                  icon={<RotateCcw size={14} />}
+                  isDisabled={actionId === note.id}
                   onClick={() => handleRestore(note.id)}
-                >
-                  <RotateCcw className="h-3.5 w-3.5" />
-                  Restore
-                </Button>
+                />
                 <Button
                   variant="ghost"
                   size="sm"
-                  className="h-8 gap-1.5 text-xs text-muted-foreground hover:text-destructive"
-                  disabled={actionId === note.id}
+                  label="Delete"
+                  icon={<AlertTriangle size={14} />}
+                  isDisabled={actionId === note.id}
                   onClick={() => setNoteToDelete(note)}
-                >
-                  <AlertTriangle className="h-3.5 w-3.5" />
-                  Delete
-                </Button>
+                />
               </div>
             </div>
           ))}
@@ -187,39 +173,34 @@ export function TrashList() {
 
       {/* Permanent delete confirmation dialog */}
       <Dialog
-        open={noteToDelete !== null}
+        isOpen={noteToDelete !== null}
         onOpenChange={(open) => {
           if (!open) setNoteToDelete(null);
         }}
+        purpose="required"
       >
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Permanently delete note</DialogTitle>
-            <DialogDescription>
-              This action cannot be undone. This will permanently delete{" "}
-              <span className="font-medium text-foreground">
-                {noteToDelete?.title}
-              </span>
-              .
-            </DialogDescription>
-          </DialogHeader>
-          <DialogFooter>
-            <Button
-              variant="outline"
-              onClick={() => setNoteToDelete(null)}
-              disabled={actionId !== null}
-            >
-              Cancel
-            </Button>
-            <Button
-              variant="destructive"
-              disabled={actionId !== null}
-              onClick={handlePermanentDelete}
-            >
-              {actionId !== null ? "Deleting..." : "Permanently delete"}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
+        <DialogHeader
+          title="Permanently delete note"
+          subtitle={
+            noteToDelete
+              ? `This action cannot be undone. This will permanently delete ${noteToDelete.title}.`
+              : undefined
+          }
+        />
+        <div className="flex justify-end gap-2">
+          <Button
+            variant="secondary"
+            label="Cancel"
+            onClick={() => setNoteToDelete(null)}
+            isDisabled={actionId !== null}
+          />
+          <Button
+            variant="destructive"
+            label={actionId !== null ? "Deleting\u2026" : "Permanently delete"}
+            isDisabled={actionId !== null}
+            onClick={handlePermanentDelete}
+          />
+        </div>
       </Dialog>
     </div>
   );

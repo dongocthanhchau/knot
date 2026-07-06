@@ -10,3 +10,6 @@ dist/
 *.db-journal
 .DS_Store
 *.tsbuildinfo
+.opencode/
+*.png
+.tmp/

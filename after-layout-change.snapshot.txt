@@ -1,0 +1,205 @@
+uid=289_0 RootWebArea "Knot" url="http://localhost:3000/notes/3yp5unmi74u6jyzl"
+  uid=289_1 link "Skip to content" url="http://localhost:3000/notes/3yp5unmi74u6jyzl#astryx-app-shell-main"
+    uid=289_2 StaticText "Skip to content"
+  uid=289_3 navigation "Side navigation"
+    uid=289_4 link "Knot" url="http://localhost:3000/"
+      uid=289_5 StaticText "Knot"
+    uid=289_6 StaticText "Navigation"
+    uid=289_7 link "Dashboard" url="http://localhost:3000/"
+      uid=289_8 StaticText "Dashboard"
+    uid=289_9 link "Notes" url="http://localhost:3000/notes"
+      uid=289_10 StaticText "Notes"
+    uid=289_11 link "Tags" url="http://localhost:3000/tags"
+      uid=289_12 StaticText "Tags"
+    uid=289_13 link "Trash" url="http://localhost:3000/notes/trash"
+      uid=289_14 StaticText "Trash"
+    uid=289_15 link "Settings" url="http://localhost:3000/settings"
+      uid=289_16 StaticText "Settings"
+    uid=289_17 button "Collapse sidebar"
+      uid=289_18 status atomic live="polite" relevant="additions text"
+  uid=289_19 separator "Resize sidebar" orientation="vertical" value="260" valuemax="480" valuemin="180" valuetext=""
+  uid=289_20 main
+    uid=289_21 navigation "Main navigation"
+      uid=289_22 button "Back to notes" description="Back to notes"
+        uid=289_23 status atomic live="polite" relevant="additions text"
+      uid=289_24 textbox "Note title" value="Test Note from Browser"
+      uid=289_25 button "Save" description="Saved" disableable disabled
+        uid=289_26 status atomic live="polite" relevant="additions text"
+      uid=289_27 button "Delete note" description="Delete note"
+        uid=289_28 status atomic live="polite" relevant="additions text"
+      uid=289_29 button "Focus mode" description="Focus mode"
+        uid=289_30 status atomic live="polite" relevant="additions text"
+      uid=289_31 button "Toggle theme" expandable haspopup="menu"
+        uid=289_32 status atomic live="polite" relevant="additions text"
+      uid=289_33 button "User menu" expandable haspopup="menu"
+        uid=289_34 status atomic live="polite" relevant="additions text"
+    uid=289_35 main
+      uid=289_36 button "Hide outline" focusable focused
+      uid=289_37 button "Undo" description="Undo" disableable disabled
+        uid=289_38 status atomic live="polite" relevant="additions text"
+      uid=289_39 button "Redo" description="Redo" disableable disabled
+        uid=289_40 status atomic live="polite" relevant="additions text"
+      uid=289_41 combobox "Font family" expandable haspopup="menu" value="Arial"
+        uid=289_42 option "Arial" selectable selected value="Arial"
+        uid=289_43 option "Comic Sans MS" selectable value="Comic Sans MS"
+        uid=289_44 option "Courier New" selectable value="Courier New"
+        uid=289_45 option "Georgia" selectable value="Georgia"
+        uid=289_46 option "Helvetica" selectable value="Helvetica"
+        uid=289_47 option "Times New Roman" selectable value="Times New Roman"
+        uid=289_48 option "Trebuchet MS" selectable value="Trebuchet MS"
+        uid=289_49 option "Verdana" selectable value="Verdana"
+      uid=289_50 combobox "Font size" expandable haspopup="menu" value="11"
+        uid=289_51 option "8" selectable value="8"
+        uid=289_52 option "9" selectable value="9"
+        uid=289_53 option "10" selectable value="10"
+        uid=289_54 option "11" selectable selected value="11"
+        uid=289_55 option "12" selectable value="12"
+        uid=289_56 option "14" selectable value="14"
+        uid=289_57 option "16" selectable value="16"
+        uid=289_58 option "18" selectable value="18"
+        uid=289_59 option "20" selectable value="20"
+        uid=289_60 option "22" selectable value="22"
+        uid=289_61 option "24" selectable value="24"
+        uid=289_62 option "26" selectable value="26"
+        uid=289_63 option "28" selectable value="28"
+        uid=289_64 option "36" selectable value="36"
+        uid=289_65 option "42" selectable value="42"
+        uid=289_66 option "48" selectable value="48"
+        uid=289_67 option "72" selectable value="72"
+      uid=289_68 button "Bold" description="Bold"
+        uid=289_69 status atomic live="polite" relevant="additions text"
+      uid=289_70 button "Italic" description="Italic"
+        uid=289_71 status atomic live="polite" relevant="additions text"
+      uid=289_72 button "Underline" description="Underline"
+        uid=289_73 status atomic live="polite" relevant="additions text"
+      uid=289_74 button "Strikethrough" description="Strikethrough"
+        uid=289_75 status atomic live="polite" relevant="additions text"
+      uid=289_76 button "Text color" description="Text color"
+      uid=289_77 button "Highlight color" description="Highlight color"
+      uid=289_78 button "Heading 1" description="Heading 1"
+        uid=289_79 status atomic live="polite" relevant="additions text"
+      uid=289_80 button "Heading 2" description="Heading 2"
+        uid=289_81 status atomic live="polite" relevant="additions text"
+      uid=289_82 button "Heading 3" description="Heading 3"
+        uid=289_83 status atomic live="polite" relevant="additions text"
+      uid=289_84 button "Align left" description="Align left"
+        uid=289_85 status atomic live="polite" relevant="additions text"
+      uid=289_86 button "Align center" description="Align center"
+        uid=289_87 status atomic live="polite" relevant="additions text"
+      uid=289_88 button "Align right" description="Align right"
+        uid=289_89 status atomic live="polite" relevant="additions text"
+      uid=289_90 button "Bullet list" description="Bullet list"
+        uid=289_91 status atomic live="polite" relevant="additions text"
+      uid=289_92 button "Ordered list" description="Ordered list"
+        uid=289_93 status atomic live="polite" relevant="additions text"
+      uid=289_94 button "Insert link" description="Insert link"
+        uid=289_95 status atomic live="polite" relevant="additions text"
+      uid=289_96 button "Insert DataSheet" description="Insert DataSheet"
+        uid=289_97 status atomic live="polite" relevant="additions text"
+      uid=289_98 button "Focus mode" description="Focus mode"
+        uid=289_99 status atomic live="polite" relevant="additions text"
+      uid=289_100 StaticText "Document outline"
+      uid=289_101 button "Hide"
+      uid=289_102 button "This is a test note with bold text. Edited with auto-save."
+      uid=289_103 button "(Empty heading)"
+      uid=289_104 button "(Empty heading)"
+      uid=289_105 button "(Empty heading)"
+      uid=289_106 generic value="This is a test note with bold text. Edited with auto-save.
+
+Hello Word-like Editor!
+
+
+
+
+
+
+
++ Cột
++ Dòng
+- Cột
+- Dòng
+
+Introduction
+
+
+
+
+GettingStarted
+
+
+
+
+Installation
+
+
+
+
+AdvancedUsage
+
+
+"
+        uid=289_107 heading "This is a test note with bold text. Edited with auto-save." level="1"
+        uid=289_108 paragraph
+          uid=289_109 StaticText "Hello Word-like Editor!"
+        uid=289_110 paragraph
+          uid=289_111 LineBreak "
+"
+        uid=289_112 paragraph
+          uid=289_113 LineBreak "
+"
+        uid=289_114 button "+ Cột"
+        uid=289_115 button "+ Dòng"
+        uid=289_116 button "- Cột"
+        uid=289_117 button "- Dòng"
+        uid=289_118 generic atomic live="polite" relevant="additions text"
+        uid=289_119 generic
+        uid=289_120 row
+          uid=289_121 columnheader
+          uid=289_122 columnheader
+          uid=289_123 columnheader
+          uid=289_124 columnheader
+        uid=289_125 row
+          uid=289_126 gridcell
+          uid=289_127 gridcell
+          uid=289_128 gridcell
+          uid=289_129 gridcell
+        uid=289_130 row
+          uid=289_131 gridcell
+          uid=289_132 gridcell
+          uid=289_133 gridcell
+          uid=289_134 gridcell
+        uid=289_135 row
+          uid=289_136 gridcell
+          uid=289_137 gridcell
+          uid=289_138 gridcell
+          uid=289_139 gridcell
+        uid=289_140 row
+          uid=289_141 gridcell
+          uid=289_142 gridcell
+          uid=289_143 gridcell
+          uid=289_144 gridcell
+        uid=289_145 row
+          uid=289_146 gridcell
+          uid=289_147 gridcell
+          uid=289_148 gridcell
+          uid=289_149 gridcell
+        uid=289_150 generic
+        uid=289_151 paragraph
+          uid=289_152 StaticText "Introduction"
+        uid=289_153 heading "  " level="2"
+        uid=289_154 paragraph
+          uid=289_155 StaticText "GettingStarted"
+        uid=289_156 heading "  " level="3"
+        uid=289_157 paragraph
+          uid=289_158 StaticText "Installation"
+        uid=289_159 heading "  " level="2"
+        uid=289_160 paragraph
+          uid=289_161 StaticText "AdvancedUsage"
+        uid=289_162 paragraph
+          uid=289_163 LineBreak "
+"
+  uid=289_164 region "Notifications"
+  uid=289_165 button "Open Next.js Dev Tools" expandable haspopup="menu"
+  uid=289_166 button "Open issues overlay"
+  uid=289_167 button "Collapse issues badge"
+  uid=289_168 alert atomic live="assertive" relevant="additions text"

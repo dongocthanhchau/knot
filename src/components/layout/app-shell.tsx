@@ -1,32 +1,28 @@
 "use client";
 
-import * as React from "react";
 import { usePathname } from "next/navigation";
+import {
+  AppShell as AstryxAppShell,
+  LayerProvider,
+} from "@astryxdesign/core";
 import { Sidebar } from "@/components/layout/sidebar";
 import { Header } from "@/components/layout/header";
 import { MainContent } from "@/components/layout/main-content";
-import { Sheet, SheetContent } from "@/components/ui/sheet";
-import { Sidebar as MobileSidebar } from "@/components/layout/sidebar";
-import { TooltipProvider } from "@/components/ui/tooltip";
 import {
   FocusModeProvider,
   useFocusMode,
 } from "@/contexts/focus-mode-context";
-import { NoteHeaderProvider } from "@/contexts/note-header-context";
-
 interface AppShellProps {
   children: React.ReactNode;
 }
 
 export function AppShell({ children }: AppShellProps) {
   return (
-    <TooltipProvider>
+    <LayerProvider>
       <FocusModeProvider>
-        <NoteHeaderProvider>
-          <AppShellInner>{children}</AppShellInner>
-        </NoteHeaderProvider>
+        <AppShellInner>{children}</AppShellInner>
       </FocusModeProvider>
-    </TooltipProvider>
+    </LayerProvider>
   );
 }
 
@@ -35,41 +31,25 @@ function AppShellInner({ children }: AppShellProps) {
   const pathname = usePathname();
   const isNoteEditor = pathname?.startsWith("/notes/");
   const mainClassName = isNoteEditor ? "p-0 lg:p-0" : undefined;
-  const [collapsed, setCollapsed] = React.useState(false);
-  const [mobileOpen, setMobileOpen] = React.useState(false);
 
   if (focusMode) {
     return (
-      <div className="flex h-screen overflow-hidden bg-background">
-        <div className="flex flex-1 flex-col overflow-hidden">
-          <MainContent className={mainClassName}>{children}</MainContent>
-        </div>
-      </div>
+      <AstryxAppShell height="fill">
+        <MainContent className={mainClassName}>{children}</MainContent>
+      </AstryxAppShell>
     );
   }
 
   return (
-    <div className="flex h-screen overflow-hidden bg-background">
-      {/* Desktop sidebar */}
-      <div className="hidden md:flex">
-        <Sidebar
-          collapsed={collapsed}
-          onToggle={() => setCollapsed(!collapsed)}
-        />
-      </div>
-
-      {/* Mobile sidebar (sheet) */}
-      <Sheet open={mobileOpen} onOpenChange={setMobileOpen}>
-        <SheetContent side="left" className="w-60 p-0">
-          <MobileSidebar collapsed={false} onToggle={() => {}} />
-        </SheetContent>
-      </Sheet>
-
-      {/* Main area */}
-      <div className="flex flex-1 flex-col overflow-hidden">
-        <Header onMenuClick={() => setMobileOpen(true)} />
+    <AstryxAppShell
+      height="fill"
+      variant="surface"
+      sideNav={<Sidebar />}
+    >
+      <div className="flex flex-col h-full">
+        <Header />
         <MainContent className={mainClassName}>{children}</MainContent>
       </div>
-    </div>
+    </AstryxAppShell>
   );
 }

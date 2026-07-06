@@ -12,22 +12,16 @@ const FocusModeContext = createContext<FocusModeContextType | undefined>(undefin
 const STORAGE_KEY = "knot-focus-mode"
 
 export function FocusModeProvider({ children }: { children: ReactNode }) {
-  const [focusMode, setFocusMode] = useState<boolean>(false)
-  const [hydrated, setHydrated] = useState(false)
+  const [focusMode, setFocusMode] = useState<boolean>(() => {
+    if (typeof window !== "undefined") {
+      return sessionStorage.getItem(STORAGE_KEY) === "true"
+    }
+    return false
+  })
 
   useEffect(() => {
-    const stored = sessionStorage.getItem(STORAGE_KEY)
-    if (stored !== null) {
-      setFocusMode(stored === "true")
-    }
-    setHydrated(true)
-  }, [])
-
-  useEffect(() => {
-    if (hydrated) {
-      sessionStorage.setItem(STORAGE_KEY, String(focusMode))
-    }
-  }, [focusMode, hydrated])
+    sessionStorage.setItem(STORAGE_KEY, String(focusMode))
+  }, [focusMode])
 
   return (
     <FocusModeContext.Provider value={{ focusMode, setFocusMode }}>

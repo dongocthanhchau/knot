@@ -1,146 +1,166 @@
 "use client";
 
-import * as React from "react";
-import Link from "next/link";
-import { ArrowLeft, Menu, Trash2 } from "lucide-react";
-import { Button } from "@/components/ui/button";
-import { ThemeToggle } from "@/components/theme/theme-toggle";
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { usePathname, useRouter } from "next/navigation";
+import { useEffect, useState } from "react";
 import {
+  TopNav,
+  Button,
   DropdownMenu,
-  DropdownMenuContent,
   DropdownMenuItem,
-  DropdownMenuLabel,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
+} from "@astryxdesign/core";
 import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-} from "@/components/ui/dialog";
-import { FocusModeToggle } from "@/components/editor/focus-mode-toggle";
-import { useNoteHeader } from "@/contexts/note-header-context";
+  ArrowLeft,
+  User,
+  Settings,
+  LogOut,
+  Save,
+  Loader2,
+  Check,
+  Trash2,
+} from "lucide-react";
+import { ThemeToggle } from "@/components/theme/theme-toggle";
 import { signOutAction } from "@/server/auth";
+import { useFocusMode } from "@/contexts/focus-mode-context";
+import {
+  editorHeaderStore,
+  type EditorHeaderState,
+} from "@/components/layout/editor-header-store";
+import { FocusModeToggle } from "@/components/editor/focus-mode-toggle";
 
-interface HeaderProps {
-  onMenuClick: () => void;
-}
+export function Header() {
+  const { focusMode } = useFocusMode();
+  const pathname = usePathname();
+  const router = useRouter();
+  const isNoteEditor = pathname?.startsWith("/notes/") && pathname !== "/notes";
+  const [editorState, setEditorState] = useState<EditorHeaderState | null>(
+    null,
+  );
 
-export function Header({ onMenuClick }: HeaderProps) {
-  const { data } = useNoteHeader();
-  const showNoteBar = data && !data.focusMode;
+  useEffect(() => {
+    return editorHeaderStore.subscribe(setEditorState);
+  }, []);
 
-  return (
-    <header className="flex h-14 items-center gap-4 border-b bg-background px-4 lg:px-6">
-      {/* Mobile menu toggle — hide when note title bar is shown */}
-      <Button
-        variant="ghost"
-        size="icon"
-        className={showNoteBar ? "hidden" : "h-8 w-8 md:hidden"}
-        onClick={onMenuClick}
-      >
-        <Menu className="h-4 w-4" />
-        <span className="sr-only">Toggle menu</span>
-      </Button>
+  if (focusMode) return null;
 
-      {/* Note title bar */}
-      {showNoteBar ? (
-        <div className="flex flex-1 items-center gap-2">
-          <Button variant="ghost" size="icon" className="h-8 w-8" asChild>
-            <Link href="/notes">
-              <ArrowLeft className="size-4" />
-              <span className="sr-only">Back to notes</span>
-            </Link>
-          </Button>
-
+  if (isNoteEditor && editorState) {
+    return (
+      <TopNav
+        label="Main navigation"
+        startContent={
+          <Button
+            variant="ghost"
+            isIconOnly
+            icon={<ArrowLeft size={20} />}
+            label="Back to notes"
+            tooltip="Back to notes"
+            onClick={() => router.push("/notes")}
+          />
+        }
+        centerContent={
           <input
             id="note-title"
             name="title"
-            value={data.title}
-            onChange={data.onTitleChange}
-            onBlur={data.onTitleBlur}
+            value={editorState.title}
+            onChange={editorState.onTitleChange}
+            onBlur={editorState.onTitleBlur}
             placeholder="Untitled"
-            className="flex-1 border-none bg-transparent text-xl font-semibold tracking-tight placeholder:text-muted-foreground/40 focus:outline-none"
+            aria-label="Note title"
+            className="w-full max-w-lg border-none bg-transparent text-lg font-semibold tracking-tight text-center placeholder:text-muted-foreground/30 focus:outline-none focus:ring-0"
           />
-
-          <FocusModeToggle />
-
-          <Dialog
-            open={data.deleteDialogOpen}
-            onOpenChange={data.setDeleteDialogOpen}
-          >
-            <DialogTrigger asChild>
-              <Button variant="ghost" size="icon">
-                <Trash2 className="size-4" />
-                <span className="sr-only">Delete note</span>
-              </Button>
-            </DialogTrigger>
-            <DialogContent>
-              <DialogHeader>
-                <DialogTitle>Delete note</DialogTitle>
-                <DialogDescription>
-                  Are you sure you want to delete this note? This action
-                  cannot be undone.
-                </DialogDescription>
-              </DialogHeader>
-              <DialogFooter>
-                <Button
-                  variant="outline"
-                  onClick={() => data.setDeleteDialogOpen(false)}
-                >
-                  Cancel
-                </Button>
-                <Button
-                  variant="destructive"
-                  onClick={data.onDelete}
-                  disabled={data.isDeleting}
-                >
-                  {data.isDeleting ? "Deleting..." : "Delete"}
-                </Button>
-              </DialogFooter>
-            </DialogContent>
-          </Dialog>
-        </div>
-      ) : (
-        <div className="flex-1" />
-      )}
-
-      {/* Actions */}
-      <div className="flex items-center gap-2">
-        <ThemeToggle />
-
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
+        }
+        endContent={
+          <div className="flex items-center gap-0.5">
             <Button
               variant="ghost"
-              size="icon"
-              className="h-8 w-8 rounded-full"
+              isIconOnly
+              icon={
+                editorState.saveStatus === "saving" ? (
+                  <Loader2 size={20} className="animate-spin" />
+                ) : editorState.saveStatus === "saved" ? (
+                  <Check size={20} />
+                ) : (
+                  <Save size={20} />
+                )
+              }
+              label="Save"
+              tooltip={
+                editorState.saveStatus === "saving"
+                  ? "Saving\u2026"
+                  : editorState.saveStatus === "saved"
+                    ? "Saved"
+                    : "Save"
+              }
+              onClick={editorState.onSave}
+              isDisabled={editorState.saveStatus !== "unsaved"}
+              className={
+                editorState.saveStatus === "saved" ? "text-green-500" : undefined
+              }
+            />
+            <Button
+              variant="ghost"
+              isIconOnly
+              icon={<Trash2 size={20} />}
+              label="Delete note"
+              tooltip="Delete note"
+              onClick={() => editorState.onDeleteDialogOpen(true)}
+            />
+            <div className="w-px h-4 bg-border/40 mx-0.5" />
+            <FocusModeToggle />
+            <ThemeToggle />
+            <DropdownMenu
+              button={{
+                variant: "ghost",
+                isIconOnly: true,
+                icon: <User size={20} />,
+                label: "User menu",
+              }}
+              placement="below"
             >
-              <Avatar className="h-8 w-8">
-                <AvatarFallback className="text-xs bg-primary/10 text-primary">
-                  K
-                </AvatarFallback>
-              </Avatar>
-            </Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="end" className="w-48">
-            <DropdownMenuLabel>My Account</DropdownMenuLabel>
-            <DropdownMenuSeparator />
-            <DropdownMenuItem asChild>
-              <Link href="/settings">Settings</Link>
-            </DropdownMenuItem>
-            <DropdownMenuSeparator />
-            <DropdownMenuItem onClick={() => signOutAction()}>
-              Sign out
-            </DropdownMenuItem>
-          </DropdownMenuContent>
-        </DropdownMenu>
-      </div>
-    </header>
+              <DropdownMenuItem
+                icon={Settings}
+                label="Settings"
+                onClick={() => router.push("/settings")}
+              />
+              <DropdownMenuItem
+                icon={LogOut}
+                label="Sign out"
+                onClick={() => editorState.signOutAction()}
+              />
+            </DropdownMenu>
+          </div>
+        }
+      />
+    );
+  }
+
+  return (
+    <TopNav
+      label="Main navigation"
+      endContent={
+        <>
+          <ThemeToggle />
+          <DropdownMenu
+            button={{
+              variant: "ghost",
+              isIconOnly: true,
+              icon: <User size={20} />,
+              label: "User menu",
+            }}
+            placement="below"
+          >
+            <DropdownMenuItem
+              icon={Settings}
+              label="Settings"
+              onClick={() => router.push("/settings")}
+            />
+            <DropdownMenuItem
+              icon={LogOut}
+              label="Sign out"
+              onClick={() => signOutAction()}
+            />
+          </DropdownMenu>
+        </>
+      }
+    />
   );
 }

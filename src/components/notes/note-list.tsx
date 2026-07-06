@@ -4,23 +4,8 @@ import { useEffect, useState, useCallback, useRef } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { FileText, Plus, Trash2, Clock, Search } from "lucide-react";
-import { cn } from "@/lib/utils";
-import { Button } from "@/components/ui/button";
-import { Skeleton } from "@/components/ui/skeleton";
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogDescription,
-  DialogFooter,
-} from "@/components/ui/dialog";
-import {
-  TooltipProvider,
-  Tooltip,
-  TooltipTrigger,
-  TooltipContent,
-} from "@/components/ui/tooltip";
+import { Button, Dialog, DialogHeader } from "@astryxdesign/core";
+import { Skeleton } from "@astryxdesign/core";
 import {
   listNotesAction,
   createNoteAction,
@@ -147,10 +132,7 @@ export function NoteList() {
       {/* Header */}
       <div className="flex items-center justify-between">
         <h2 className="text-lg font-semibold tracking-tight">Notes</h2>
-        <Button onClick={handleCreate} size="sm">
-          <Plus className="mr-1 h-4 w-4" />
-          New Note
-        </Button>
+        <Button onClick={handleCreate} variant="primary" size="sm" label="New Note" icon={<Plus size={16} />} />
       </div>
 
       {/* Search */}
@@ -172,9 +154,9 @@ export function NoteList() {
         <div className="space-y-3">
           {Array.from({ length: 3 }).map((_, i) => (
             <div key={i} className="rounded-lg border p-4 space-y-2">
-              <Skeleton className="h-5 w-3/5" />
-              <Skeleton className="h-4 w-full" />
-              <Skeleton className="h-3 w-1/4" />
+              <Skeleton height={20} width="60%" radius={1} />
+              <Skeleton height={16} width="100%" radius={1} />
+              <Skeleton height={12} width="25%" radius={1} />
             </div>
           ))}
         </div>
@@ -184,14 +166,11 @@ export function NoteList() {
       {error && (
         <div className="rounded-lg border border-destructive/50 p-6 text-center space-y-3">
           <p className="text-sm text-destructive">{error}</p>
-          <Button variant="outline" size="sm" onClick={fetchNotes}>
-            Try again
-          </Button>
+          <Button variant="secondary" size="sm" label="Try again" onClick={fetchNotes} />
         </div>
       )}
 
       {/* Empty state */}
-      {/* No notes yet state */}
       {hasNoNotes && (
         <div className="flex flex-col items-center justify-center rounded-lg border border-dashed py-12 text-center">
           <FileText className="mb-3 h-10 w-10 text-muted-foreground/50" />
@@ -199,10 +178,7 @@ export function NoteList() {
           <p className="mb-4 text-xs text-muted-foreground">
             Create your first note to get started
           </p>
-          <Button onClick={handleCreate} size="sm" variant="outline">
-            <Plus className="mr-1 h-4 w-4" />
-            Create Note
-          </Button>
+          <Button onClick={handleCreate} variant="secondary" size="sm" label="Create Note" icon={<Plus size={16} />} />
         </div>
       )}
 
@@ -220,89 +196,77 @@ export function NoteList() {
       {/* Populated state */}
       {!isLoading && !error && notes.length > 0 && (
         <div className="space-y-2">
-          <TooltipProvider>
-            {notes.map((note) => (
-              <div
-                key={note.id}
-                className="group relative rounded-lg border p-4 transition-colors hover:bg-accent/50"
+          {notes.map((note) => (
+            <div
+              key={note.id}
+              className="group relative rounded-lg border p-4 transition-colors hover:bg-accent/50"
+            >
+              <Link
+                href={`/notes/${note.id}`}
+                className="flex items-start justify-between gap-4"
               >
-                <Link
-                  href={`/notes/${note.id}`}
-                  className="flex items-start justify-between gap-4"
-                >
-                  <div className="min-w-0 flex-1 space-y-1">
-                    <h3 className="truncate text-sm font-semibold">
-                      {note.title}
-                    </h3>
-                    {note.preview && (
-                      <p className="line-clamp-2 text-xs text-muted-foreground">
-                        {stripHtml(note.preview)}
-                      </p>
-                    )}
-                    <div className="flex items-center gap-1.5 pt-1 text-[11px] text-muted-foreground/70">
-                      <Clock className="h-3 w-3" />
-                      <span>{formatRelativeTime(note.updatedAt)}</span>
-                    </div>
+                <div className="min-w-0 flex-1 space-y-1">
+                  <h3 className="truncate text-sm font-semibold">
+                    {note.title}
+                  </h3>
+                  {note.preview && (
+                    <p className="line-clamp-2 text-xs text-muted-foreground">
+                      {stripHtml(note.preview)}
+                    </p>
+                  )}
+                  <div className="flex items-center gap-1.5 pt-1 text-[11px] text-muted-foreground/70">
+                    <Clock className="h-3 w-3" />
+                    <span>{formatRelativeTime(note.updatedAt)}</span>
                   </div>
-                </Link>
-
-                {/* Delete button — outside Link to avoid navigation */}
-                <div className="absolute right-3 top-3 opacity-0 transition-opacity group-hover:opacity-100">
-                  <Tooltip>
-                    <TooltipTrigger asChild>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className="h-7 w-7 text-muted-foreground/60 hover:text-destructive"
-                        onClick={() => setNoteToDelete(note)}
-                      >
-                        <Trash2 className="h-3.5 w-3.5" />
-                      </Button>
-                    </TooltipTrigger>
-                    <TooltipContent side="top">Delete note</TooltipContent>
-                  </Tooltip>
                 </div>
+              </Link>
+
+              {/* Delete button — outside Link to avoid navigation */}
+              <div className="absolute right-3 top-3 opacity-0 transition-opacity group-hover:opacity-100">
+                <Button
+                  variant="ghost"
+                  isIconOnly
+                  icon={<Trash2 size={14} />}
+                  label="Delete note"
+                  tooltip="Delete note"
+                  onClick={() => setNoteToDelete(note)}
+                />
               </div>
-            ))}
-          </TooltipProvider>
+            </div>
+          ))}
         </div>
       )}
 
       {/* Delete confirmation dialog */}
       <Dialog
-        open={noteToDelete !== null}
+        isOpen={noteToDelete !== null}
         onOpenChange={(open) => {
           if (!open) setNoteToDelete(null);
         }}
+        purpose="required"
       >
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Delete note</DialogTitle>
-            <DialogDescription>
-              Are you sure you want to delete{" "}
-              <span className="font-medium text-foreground">
-                {noteToDelete?.title}
-              </span>
-              ? This action cannot be undone.
-            </DialogDescription>
-          </DialogHeader>
-          <DialogFooter>
-            <Button
-              variant="outline"
-              onClick={() => setNoteToDelete(null)}
-              disabled={deletingId !== null}
-            >
-              Cancel
-            </Button>
-            <Button
-              variant="destructive"
-              disabled={deletingId !== null}
-              onClick={handleDelete}
-            >
-              {deletingId !== null ? "Deleting..." : "Delete"}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
+        <DialogHeader
+          title="Delete note"
+          subtitle={
+            noteToDelete
+              ? `Are you sure you want to delete ${noteToDelete.title}? This action cannot be undone.`
+              : undefined
+          }
+        />
+        <div className="flex justify-end gap-2">
+          <Button
+            variant="secondary"
+            label="Cancel"
+            onClick={() => setNoteToDelete(null)}
+            isDisabled={deletingId !== null}
+          />
+          <Button
+            variant="destructive"
+            label={deletingId !== null ? "Deleting\u2026" : "Delete"}
+            isDisabled={deletingId !== null}
+            onClick={handleDelete}
+          />
+        </div>
       </Dialog>
     </div>
   );

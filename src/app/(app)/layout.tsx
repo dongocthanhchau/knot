@@ -6,5 +6,9 @@ export default async function AppLayout({ children }: { children: React.ReactNod
   const { user } = await getSession();
   if (!user) redirect("/login");
 
-  return <AppShell>{children}</AppShell>;
+  return (
+    <div data-astryx-theme="neutral">
+      <AppShell>{children}</AppShell>
+    </div>
+  );
 }
