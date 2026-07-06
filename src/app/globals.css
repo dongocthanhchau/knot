@@ -299,8 +299,11 @@ body {
 /* ─── Outline Sidebar ─── */
 
 .editor-outline {
-  position: relative;
+  position: sticky;
+  top: 0;
+  align-self: flex-start;
   min-width: 160px;
+  max-height: 100vh;
   border-left: 1px solid #e0e0e0;
   background: #fafafa;
   display: flex;
@@ -398,6 +401,7 @@ body {
 }
 
 .dark .editor-outline {
+  max-height: 100vh;
   background: #1e1e1e;
   border-left-color: #333;
 }
