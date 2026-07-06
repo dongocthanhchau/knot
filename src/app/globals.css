@@ -305,7 +305,7 @@ body {
   min-width: 160px;
   max-height: 100vh;
   border-left: 1px solid #e0e0e0;
-  background: #fafafa;
+  background: var(--background);
   display: flex;
   flex-direction: column;
   overflow-y: auto;
@@ -402,7 +402,7 @@ body {
 
 .dark .editor-outline {
   max-height: 100vh;
-  background: #1e1e1e;
+  background: var(--background);
   border-left-color: #333;
 }
 
