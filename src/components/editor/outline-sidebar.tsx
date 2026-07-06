@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useRef } from "react";
+import { useState, useEffect, useCallback, useMemo, useRef } from "react";
 import { ListTree, Info } from "lucide-react";
 import type { Editor } from "@tiptap/react";
 import { cn } from "@/lib/utils";
@@ -80,20 +80,32 @@ export function OutlineSidebar({ editor, createdAt, updatedAt, content }: Outlin
     document.body.style.userSelect = "none";
   }, []);
 
-  useEffect(() => {
-    if (activePos === null) return;
-    const active = document.querySelector(".editor-outline-item.editor-outline-active");
-    if (active) {
-      active.scrollIntoView({ block: "nearest", behavior: "smooth" });
+  const closestHeading = useMemo(() => {
+    if (activePos === null || headings.length === 0) return null;
+    let closest: HeadingItem | null = null;
+    for (const h of headings) {
+      if (h.pos <= activePos) {
+        closest = h;
+      } else {
+        break;
+      }
     }
-  }, [activePos]);
+    return closest;
+  }, [activePos, headings]);
+
+  useEffect(() => {
+    if (!closestHeading) return;
+    const el = document.querySelector(`[data-pos="${closestHeading.pos}"]`);
+    if (el) {
+      el.scrollIntoView({ block: "nearest" });
+    }
+  }, [closestHeading]);
 
   const isHeadingActive = useCallback(
     (h: HeadingItem) => {
-      if (activePos === null) return false;
-      return activePos >= h.pos && activePos < h.pos + (h.text.length || 1);
+      return closestHeading !== null && closestHeading.pos === h.pos && closestHeading.text === h.text;
     },
-    [activePos]
+    [closestHeading]
   );
 
   const navigateToHeading = useCallback(
@@ -165,6 +177,7 @@ export function OutlineSidebar({ editor, createdAt, updatedAt, content }: Outlin
             headings.map((h) => (
               <button
                 key={h.pos}
+                data-pos={h.pos}
                 className={cn(
                   "editor-outline-item",
                   `editor-outline-level-${h.level}`,
