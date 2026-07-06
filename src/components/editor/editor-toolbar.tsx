@@ -1,6 +1,6 @@
 "use client";
 
-import { Fragment, useCallback, type ReactNode } from "react";
+import { Fragment, useCallback, useState, type ReactNode } from "react";
 import { Button } from "@astryxdesign/core";
 import type { Editor } from "@tiptap/react";
 import * as DropdownMenu from "@radix-ui/react-dropdown-menu";
@@ -21,6 +21,15 @@ import {
   Palette,
   Heading,
   Space,
+  Link,
+  IndentIncrease,
+  IndentDecrease,
+  Image,
+  SeparatorHorizontal,
+  Table2,
+  Code,
+  RemoveFormatting,
+  FileUp,
 } from "lucide-react";
 import { FocusModeToggle } from "./focus-mode-toggle";
 import { FontFamilyDropdown } from "./dropdowns/font-family";
@@ -45,15 +54,23 @@ type ToolbarButtonProps = {
   isDisabled?: boolean;
 };
 
+const S = (id: string, priority: number): ToolbarSection => ({ id, priority });
+const SEP = (n: number) => S(`s${n}`, 5);
+
 const TOOLBAR_SECTIONS: ToolbarSection[] = [
-  { id: "undo-redo", priority: 100 },
-  { id: "font", priority: 95 },
-  { id: "format", priority: 90 },
-  { id: "color", priority: 85 },
-  { id: "heading", priority: 80 },
-  { id: "align", priority: 75 },
-  { id: "list", priority: 70 },
-  { id: "line-height", priority: 65 },
+  S("undo", 80), SEP(1), S("redo", 79),
+  SEP(2), S("font-family", 78), S("font-size", 77),
+  SEP(3), S("bold", 76), S("italic", 75), S("underline", 74), S("strikethrough", 73),
+  SEP(4), S("text-color", 72), S("highlight", 71),
+  SEP(5), S("heading", 70),
+  SEP(6), S("align-left", 69), S("align-center", 68), S("align-right", 67), S("justify", 66),
+  SEP(7), S("bullet-list", 65), S("ordered-list", 64),
+  SEP(8), S("line-height", 63),
+  SEP(9), S("insert-link", 62),
+  SEP(10), S("outdent", 60), S("indent", 61),
+  SEP(11), S("table", 59), S("hr", 58), S("image", 57),
+  SEP(12), S("inline-code", 56), S("clear-fmt", 55),
+  SEP(13), S("file-attach", 54),
 ];
 
 const TEXT_COLORS = [
@@ -89,359 +106,352 @@ function ToolbarBtn({ icon, label, onClick, isActive, isDisabled }: ToolbarButto
 export function EditorToolbar({ editor }: ToolbarProps) {
   const { containerRef, overflowIds } = useToolbarCollapse(TOOLBAR_SECTIONS);
 
+  const addLink = useCallback(() => {
+    const url = window.prompt("URL:");
+    if (url) {
+      editor!.chain().focus().setLink({ href: url }).run();
+    }
+  }, [editor]);
+
+  const addTable = useCallback(() => {
+    editor!.chain().focus().insertTable({ rows: 3, cols: 3, withHeaderRow: true }).run();
+  }, [editor]);
+
+  const addImage = useCallback(() => {
+    const input = document.createElement("input");
+    input.type = "file";
+    input.accept = "image/*";
+    input.onchange = () => {
+      const file = input.files?.[0];
+      if (!file) return;
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        editor!.chain().focus().setImage({ src: e.target?.result as string }).run();
+      };
+      reader.readAsDataURL(file);
+    };
+    input.click();
+  }, [editor]);
+
+  const addFile = useCallback(() => {
+    const url = window.prompt("File URL:");
+    if (!url) return;
+    const name = window.prompt("File name:", url.split("/").pop() || "file");
+    if (name) {
+      editor!.chain().focus().insertContent(`<a href="${url}" target="_blank" download>${name}</a>`).run();
+    }
+  }, [editor]);
+
   const renderOverflowItem = useCallback(
     (id: string): ReactNode => {
       const e = editor!;
+
+      if (id.startsWith("s") && /^\d+$/.test(id.replace("s", ""))) {
+        return null;
+      }
+
       switch (id) {
-        case "undo-redo":
+        case "undo":
           return (
-            <Fragment key="undo-redo-overflow">
-              <DropdownMenuItem
-                icon={<Undo2 size={14} />}
-                label="Undo"
-                onClick={() => e.chain().focus().undo().run()}
-                isActive={false}
-              />
-              <DropdownMenuItem
-                icon={<Redo2 size={14} />}
-                label="Redo"
-                onClick={() => e.chain().focus().redo().run()}
-                isActive={false}
-              />
-            </Fragment>
+            <DropdownMenuItem key="undo" icon={<Undo2 size={14} />} label="Undo" onClick={() => e.chain().focus().undo().run()} />
+          );
+        case "redo":
+          return (
+            <DropdownMenuItem key="redo" icon={<Redo2 size={14} />} label="Redo" onClick={() => e.chain().focus().redo().run()} />
+          );
+        case "bold":
+          return (
+            <DropdownMenuItem key="bold" icon={<Bold size={14} />} label="Bold" onClick={() => e.chain().focus().toggleBold().run()} isActive={e.isActive("bold")} />
+          );
+        case "italic":
+          return (
+            <DropdownMenuItem key="italic" icon={<Italic size={14} />} label="Italic" onClick={() => e.chain().focus().toggleItalic().run()} isActive={e.isActive("italic")} />
+          );
+        case "underline":
+          return (
+            <DropdownMenuItem key="underline" icon={<Underline size={14} />} label="Underline" onClick={() => e.chain().focus().toggleUnderline().run()} isActive={e.isActive("underline")} />
+          );
+        case "strikethrough":
+          return (
+            <DropdownMenuItem key="strikethrough" icon={<Strikethrough size={14} />} label="Strikethrough" onClick={() => e.chain().focus().toggleStrike().run()} isActive={e.isActive("strike")} />
+          );
+        case "align-left":
+          return (
+            <DropdownMenuItem key="align-left" icon={<AlignLeft size={14} />} label="Align left" onClick={() => e.chain().focus().setTextAlign("left").run()} isActive={e.isActive({ textAlign: "left" })} />
+          );
+        case "align-center":
+          return (
+            <DropdownMenuItem key="align-center" icon={<AlignCenter size={14} />} label="Align center" onClick={() => e.chain().focus().setTextAlign("center").run()} isActive={e.isActive({ textAlign: "center" })} />
+          );
+        case "align-right":
+          return (
+            <DropdownMenuItem key="align-right" icon={<AlignRight size={14} />} label="Align right" onClick={() => e.chain().focus().setTextAlign("right").run()} isActive={e.isActive({ textAlign: "right" })} />
+          );
+        case "justify":
+          return (
+            <DropdownMenuItem key="justify" icon={<AlignJustify size={14} />} label="Justify" onClick={() => e.chain().focus().setTextAlign("justify").run()} isActive={e.isActive({ textAlign: "justify" })} />
+          );
+        case "bullet-list":
+          return (
+            <DropdownMenuItem key="bullet-list" icon={<List size={14} />} label="Bullet list" onClick={() => e.chain().focus().toggleBulletList().run()} isActive={e.isActive("bulletList")} />
+          );
+        case "ordered-list":
+          return (
+            <DropdownMenuItem key="ordered-list" icon={<ListOrdered size={14} />} label="Ordered list" onClick={() => e.chain().focus().toggleOrderedList().run()} isActive={e.isActive("orderedList")} />
+          );
+        case "outdent":
+          return (
+            <DropdownMenuItem key="outdent" icon={<IndentDecrease size={14} />} label="Outdent" onClick={() => e.chain().focus().indentLess().run()} />
+          );
+        case "indent":
+          return (
+            <DropdownMenuItem key="indent" icon={<IndentIncrease size={14} />} label="Indent" onClick={() => e.chain().focus().indentMore().run()} />
+          );
+        case "insert-link":
+          return (
+            <DropdownMenuItem key="insert-link" icon={<Link size={14} />} label="Insert link" onClick={() => { const url = window.prompt("URL:"); if (url) e.chain().focus().setLink({ href: url }).run(); }} isActive={e.isActive("link")} />
+          );
+        case "table":
+          return (
+            <DropdownMenuItem key="table" icon={<Table2 size={14} />} label="Table" onClick={() => e.chain().focus().insertTable({ rows: 3, cols: 3, withHeaderRow: true }).run()} />
+          );
+        case "hr":
+          return (
+            <DropdownMenuItem key="hr" icon={<SeparatorHorizontal size={14} />} label="Horizontal rule" onClick={() => e.chain().focus().setHorizontalRule().run()} />
+          );
+        case "image":
+          return (
+            <DropdownMenuItem key="image" icon={<Image size={14} />} label="Image" onClick={() => { const input = document.createElement("input"); input.type = "file"; input.accept = "image/*"; input.onchange = () => { const file = input.files?.[0]; if (!file) return; const reader = new FileReader(); reader.onload = (ev) => { e.chain().focus().setImage({ src: ev.target?.result as string }).run(); }; reader.readAsDataURL(file); }; input.click(); }} />
+          );
+        case "inline-code":
+          return (
+            <DropdownMenuItem key="inline-code" icon={<Code size={14} />} label="Inline code" onClick={() => e.chain().focus().toggleCode().run()} isActive={e.isActive("code")} />
+          );
+        case "clear-fmt":
+          return (
+            <DropdownMenuItem key="clear-fmt" icon={<RemoveFormatting size={14} />} label="Clear formatting" onClick={() => e.chain().focus().unsetAllMarks().clearNodes().run()} />
+          );
+        case "file-attach":
+          return (
+            <DropdownMenuItem key="file-attach" icon={<FileUp size={14} />} label="File attachment" onClick={() => { const url = window.prompt("File URL:"); if (!url) return; const name = window.prompt("File name:", url.split("/").pop() || "file"); if (name) { e.chain().focus().insertContent(`<a href="${url}" target="_blank" download>${name}</a>`).run(); }}} />
           );
 
-        case "font":
+        case "font-family":
           return (
-            <Fragment key="font-overflow">
-              <DropdownMenuItem
-                icon={<Type size={14} />}
-                label={`Font: ${e.getAttributes("textStyle").fontFamily || "Arial"}`}
-                onClick={() => {}}
-              />
+            <Fragment key="font-family-overflow">
+              <DropdownMenuItem icon={<Type size={14} />} label={`Font: ${e.getAttributes("textStyle").fontFamily || "Arial"}`} onClick={() => {}} />
+            </Fragment>
+          );
+        case "font-size":
+          return (
+            <Fragment key="font-size-overflow">
+              <DropdownMenuItem icon={<Type size={14} />} label={`Size: ${e.getAttributes("textStyle").fontSize || "16px"}`} onClick={() => {}} />
               {FONT_SIZES.slice(0, 8).map((s) => (
-                <DropdownMenuItem
-                  key={`fs-${s}`}
-                  icon={<Type size={14} />}
-                  label={`${s}px`}
-                  onClick={() => e.chain().focus().setFontSize(`${s}px`).run()}
-                />
+                <DropdownMenuItem key={`fs-${s}`} icon={<Type size={14} />} label={`${s}px`} onClick={() => e.chain().focus().setFontSize(`${s}px`).run()} />
               ))}
             </Fragment>
           );
-
-        case "format":
+        case "text-color":
           return (
-            <Fragment key="format-overflow">
-              <DropdownMenuItem
-                icon={<Bold size={14} />}
-                label="Bold"
-                onClick={() => e.chain().focus().toggleBold().run()}
-                isActive={e.isActive("bold")}
-              />
-              <DropdownMenuItem
-                icon={<Italic size={14} />}
-                label="Italic"
-                onClick={() => e.chain().focus().toggleItalic().run()}
-                isActive={e.isActive("italic")}
-              />
-              <DropdownMenuItem
-                icon={<Underline size={14} />}
-                label="Underline"
-                onClick={() => e.chain().focus().toggleUnderline().run()}
-                isActive={e.isActive("underline")}
-              />
-              <DropdownMenuItem
-                icon={<Strikethrough size={14} />}
-                label="Strikethrough"
-                onClick={() => e.chain().focus().toggleStrike().run()}
-                isActive={e.isActive("strike")}
-              />
-            </Fragment>
-          );
-
-        case "color":
-          return (
-            <Fragment key="color-overflow">
-              <DropdownMenuItem
-                icon={<Palette size={14} />}
-                label="Text color"
-                onClick={() => {}}
-              />
+            <Fragment key="text-color-overflow">
+              <DropdownMenuItem icon={<Palette size={14} />} label="Text color" onClick={() => {}} />
               {TEXT_COLORS.slice(0, 10).map((c) => (
-                <DropdownMenu.Item
-                  key={`tc-${c}`}
-                  className="flex items-center gap-2 px-2 py-1.5 text-sm rounded cursor-pointer outline-none text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700"
-                  onClick={() => e.chain().focus().setColor(c).run()}
-                >
-                  <span
-                    className="w-4 h-4 rounded border border-gray-300 dark:border-gray-600 inline-block"
-                    style={{ backgroundColor: c }}
-                  />
+                <DropdownMenu.Item key={`tc-${c}`} className="flex items-center gap-2 px-2 py-1.5 text-sm rounded cursor-pointer outline-none text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700" onClick={() => e.chain().focus().setColor(c).run()}>
+                  <span className="w-4 h-4 rounded border border-gray-300 dark:border-gray-600 inline-block" style={{ backgroundColor: c }} />
                   {c}
                 </DropdownMenu.Item>
               ))}
             </Fragment>
           );
-
+        case "highlight":
+          return (
+            <Fragment key="highlight-overflow">
+              <DropdownMenuItem icon={<Palette size={14} />} label="Highlight" onClick={() => {}} />
+              {TEXT_COLORS.slice(0, 10).map((c) => (
+                <DropdownMenu.Item key={`hl-${c}`} className="flex items-center gap-2 px-2 py-1.5 text-sm rounded cursor-pointer outline-none text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700" onClick={() => e.chain().focus().toggleHighlight({ color: c }).run()}>
+                  <span className="w-4 h-4 rounded border border-gray-300 dark:border-gray-600 inline-block" style={{ backgroundColor: c }} />
+                  {c}
+                </DropdownMenu.Item>
+              ))}
+            </Fragment>
+          );
         case "heading":
           return (
             <Fragment key="heading-overflow">
-              <DropdownMenuItem
-                label="Paragraph"
-                onClick={() => e.chain().focus().setParagraph().run()}
-                isActive={e.isActive("paragraph")}
-              />
+              <DropdownMenuItem label="Paragraph" onClick={() => e.chain().focus().setParagraph().run()} isActive={e.isActive("paragraph")} />
               {([1, 2, 3, 4, 5, 6] as const).map((level) => (
-                <DropdownMenuItem
-                  key={`h${level}`}
-                  label={`Heading ${level}`}
-                  onClick={() => e.chain().focus().toggleHeading({ level }).run()}
-                  isActive={e.isActive("heading", { level })}
-                />
+                <DropdownMenuItem key={`h${level}`} label={`Heading ${level}`} onClick={() => e.chain().focus().toggleHeading({ level }).run()} isActive={e.isActive("heading", { level })} />
               ))}
-              <DropdownMenuItem
-                icon={<Heading size={14} />}
-                label="Blockquote"
-                onClick={() => e.chain().focus().toggleBlockquote().run()}
-                isActive={e.isActive("blockquote")}
-              />
+              <DropdownMenuItem label="Blockquote" onClick={() => e.chain().focus().toggleBlockquote().run()} isActive={e.isActive("blockquote")} />
             </Fragment>
           );
-
-        case "align":
-          return (
-            <Fragment key="align-overflow">
-              <DropdownMenuItem
-                icon={<AlignLeft size={14} />}
-                label="Align left"
-                onClick={() => e.chain().focus().setTextAlign("left").run()}
-                isActive={e.isActive({ textAlign: "left" })}
-              />
-              <DropdownMenuItem
-                icon={<AlignCenter size={14} />}
-                label="Align center"
-                onClick={() => e.chain().focus().setTextAlign("center").run()}
-                isActive={e.isActive({ textAlign: "center" })}
-              />
-              <DropdownMenuItem
-                icon={<AlignRight size={14} />}
-                label="Align right"
-                onClick={() => e.chain().focus().setTextAlign("right").run()}
-                isActive={e.isActive({ textAlign: "right" })}
-              />
-              <DropdownMenuItem
-                icon={<AlignJustify size={14} />}
-                label="Justify"
-                onClick={() => e.chain().focus().setTextAlign("justify").run()}
-                isActive={e.isActive({ textAlign: "justify" })}
-              />
-            </Fragment>
-          );
-
-        case "list":
-          return (
-            <Fragment key="list-overflow">
-              <DropdownMenuItem
-                icon={<List size={14} />}
-                label="Bullet list"
-                onClick={() => e.chain().focus().toggleBulletList().run()}
-                isActive={e.isActive("bulletList")}
-              />
-              <DropdownMenuItem
-                icon={<ListOrdered size={14} />}
-                label="Ordered list"
-                onClick={() => e.chain().focus().toggleOrderedList().run()}
-                isActive={e.isActive("orderedList")}
-              />
-            </Fragment>
-          );
-
         case "line-height":
           return (
             <Fragment key="line-height-overflow">
-              <DropdownMenuItem
-                icon={<Space size={14} />}
-                label="Line height"
-                onClick={() => {}}
-              />
+              <DropdownMenuItem icon={<Space size={14} />} label="Line height" onClick={() => {}} />
               {LINE_HEIGHTS.map((h) => (
-                <DropdownMenuItem
-                  key={`lh-${h}`}
-                  label={h}
-                  onClick={() => e.chain().focus().setLineHeight(h).run()}
-                />
+                <DropdownMenuItem key={`lh-${h}`} label={h} onClick={() => e.chain().focus().setLineHeight(h).run()} />
               ))}
             </Fragment>
           );
-
         default:
           return null;
       }
     },
-    [editor]
+    [editor, overflowIds]
   );
 
-  if (!editor) return null;
+  if (!editor) {
+    return (
+      <div ref={containerRef} className="editor-toolbar">
+        <div data-toolbar-end />
+      </div>
+    );
+  }
 
   return (
     <div ref={containerRef} className="editor-toolbar">
-      <div
-        data-toolbar-id="undo-redo"
-        style={overflowIds.has("undo-redo") ? { display: "none" } : undefined}
-      >
-        <div className="editor-toolbar-group">
-          <ToolbarBtn
-            icon={<Undo2 size={16} />}
-            label="Undo"
-            onClick={() => editor.chain().focus().undo().run()}
-            isDisabled={!editor.can().chain().undo().run()}
-          />
-          <ToolbarBtn
-            icon={<Redo2 size={16} />}
-            label="Redo"
-            onClick={() => editor.chain().focus().redo().run()}
-            isDisabled={!editor.can().chain().redo().run()}
-          />
-        </div>
+      <div data-toolbar-id="undo" style={overflowIds.has("undo") ? { display: "none" } : undefined}>
+        <ToolbarBtn icon={<Undo2 size={16} />} label="Undo" onClick={() => editor.chain().focus().undo().run()} isDisabled={!editor.can().chain().undo().run()} />
+      </div>
+      <div data-toolbar-id="s1" style={overflowIds.has("s1") ? { display: "none" } : undefined}>
+        <div className="editor-toolbar-separator" />
+      </div>
+      <div data-toolbar-id="redo" style={overflowIds.has("redo") ? { display: "none" } : undefined}>
+        <ToolbarBtn icon={<Redo2 size={16} />} label="Redo" onClick={() => editor.chain().focus().redo().run()} isDisabled={!editor.can().chain().redo().run()} />
+      </div>
+      <div data-toolbar-id="s2" style={overflowIds.has("s2") ? { display: "none" } : undefined}>
+        <div className="editor-toolbar-separator" />
+      </div>
+      <div data-toolbar-id="font-family" style={overflowIds.has("font-family") ? { display: "none" } : undefined}>
+        <FontFamilyDropdown editor={editor} />
+      </div>
+      <div data-toolbar-id="font-size" style={overflowIds.has("font-size") ? { display: "none" } : undefined}>
+        <FontSizeDropdown editor={editor} />
       </div>
 
-      <div
-        data-toolbar-id="font"
-        style={overflowIds.has("font") ? { display: "none" } : undefined}
-      >
+      <div data-toolbar-id="s3" style={overflowIds.has("s3") ? { display: "none" } : undefined}>
+        <div className="editor-toolbar-separator" />
+      </div>
+      <div data-toolbar-id="bold" style={overflowIds.has("bold") ? { display: "none" } : undefined}>
+        <ToolbarBtn icon={<Bold size={16} />} label="Bold" onClick={() => editor.chain().focus().toggleBold().run()} isActive={editor.isActive("bold")} />
+      </div>
+      <div data-toolbar-id="italic" style={overflowIds.has("italic") ? { display: "none" } : undefined}>
+        <ToolbarBtn icon={<Italic size={16} />} label="Italic" onClick={() => editor.chain().focus().toggleItalic().run()} isActive={editor.isActive("italic")} />
+      </div>
+      <div data-toolbar-id="underline" style={overflowIds.has("underline") ? { display: "none" } : undefined}>
+        <ToolbarBtn icon={<Underline size={16} />} label="Underline" onClick={() => editor.chain().focus().toggleUnderline().run()} isActive={editor.isActive("underline")} />
+      </div>
+      <div data-toolbar-id="strikethrough" style={overflowIds.has("strikethrough") ? { display: "none" } : undefined}>
+        <ToolbarBtn icon={<Strikethrough size={16} />} label="Strikethrough" onClick={() => editor.chain().focus().toggleStrike().run()} isActive={editor.isActive("strike")} />
+      </div>
+
+      <div data-toolbar-id="s4" style={overflowIds.has("s4") ? { display: "none" } : undefined}>
+        <div className="editor-toolbar-separator" />
+      </div>
+      <div data-toolbar-id="text-color" style={overflowIds.has("text-color") ? { display: "none" } : undefined}>
+        <TextColorDropdown editor={editor} />
+      </div>
+      <div data-toolbar-id="highlight" style={overflowIds.has("highlight") ? { display: "none" } : undefined}>
+        <HighlightColorDropdown editor={editor} />
+      </div>
+
+      <div data-toolbar-id="s5" style={overflowIds.has("s5") ? { display: "none" } : undefined}>
+        <div className="editor-toolbar-separator" />
+      </div>
+      <div data-toolbar-id="heading" style={overflowIds.has("heading") ? { display: "none" } : undefined}>
+        <HeadingStyleDropdown editor={editor} />
+      </div>
+
+      <div data-toolbar-id="s6" style={overflowIds.has("s6") ? { display: "none" } : undefined}>
+        <div className="editor-toolbar-separator" />
+      </div>
+      <div data-toolbar-id="align-left" style={overflowIds.has("align-left") ? { display: "none" } : undefined}>
+        <ToolbarBtn icon={<AlignLeft size={16} />} label="Align left" onClick={() => editor.chain().focus().setTextAlign("left").run()} isActive={editor.isActive({ textAlign: "left" })} />
+      </div>
+      <div data-toolbar-id="align-center" style={overflowIds.has("align-center") ? { display: "none" } : undefined}>
+        <ToolbarBtn icon={<AlignCenter size={16} />} label="Align center" onClick={() => editor.chain().focus().setTextAlign("center").run()} isActive={editor.isActive({ textAlign: "center" })} />
+      </div>
+      <div data-toolbar-id="align-right" style={overflowIds.has("align-right") ? { display: "none" } : undefined}>
+        <ToolbarBtn icon={<AlignRight size={16} />} label="Align right" onClick={() => editor.chain().focus().setTextAlign("right").run()} isActive={editor.isActive({ textAlign: "right" })} />
+      </div>
+      <div data-toolbar-id="justify" style={overflowIds.has("justify") ? { display: "none" } : undefined}>
+        <ToolbarBtn icon={<AlignJustify size={16} />} label="Justify" onClick={() => editor.chain().focus().setTextAlign("justify").run()} isActive={editor.isActive({ textAlign: "justify" })} />
+      </div>
+
+      <div data-toolbar-id="s7" style={overflowIds.has("s7") ? { display: "none" } : undefined}>
+        <div className="editor-toolbar-separator" />
+      </div>
+      <div data-toolbar-id="bullet-list" style={overflowIds.has("bullet-list") ? { display: "none" } : undefined}>
+        <ToolbarBtn icon={<List size={16} />} label="Bullet list" onClick={() => editor.chain().focus().toggleBulletList().run()} isActive={editor.isActive("bulletList")} />
+      </div>
+      <div data-toolbar-id="ordered-list" style={overflowIds.has("ordered-list") ? { display: "none" } : undefined}>
+        <ToolbarBtn icon={<ListOrdered size={16} />} label="Ordered list" onClick={() => editor.chain().focus().toggleOrderedList().run()} isActive={editor.isActive("orderedList")} />
+      </div>
+
+      <div data-toolbar-id="s8" style={overflowIds.has("s8") ? { display: "none" } : undefined}>
+        <div className="editor-toolbar-separator" />
+      </div>
+      <div data-toolbar-id="line-height" style={overflowIds.has("line-height") ? { display: "none" } : undefined}>
+        <LineHeightDropdown editor={editor} />
+      </div>
+
+      <div data-toolbar-id="s9" style={overflowIds.has("s9") ? { display: "none" } : undefined}>
+        <div className="editor-toolbar-separator" />
+      </div>
+      <div data-toolbar-id="insert-link" style={overflowIds.has("insert-link") ? { display: "none" } : undefined}>
+        <ToolbarBtn icon={<Link size={16} />} label="Link" onClick={addLink} isActive={editor.isActive("link")} />
+      </div>
+
+      <div data-toolbar-id="s10" style={overflowIds.has("s10") ? { display: "none" } : undefined}>
+        <div className="editor-toolbar-separator" />
+      </div>
+      <div data-toolbar-id="outdent" style={overflowIds.has("outdent") ? { display: "none" } : undefined}>
+        <ToolbarBtn icon={<IndentDecrease size={16} />} label="Outdent" onClick={() => editor.chain().focus().indentLess().run()} isDisabled={!editor.can().chain().indentLess().run()} />
+      </div>
+      <div data-toolbar-id="indent" style={overflowIds.has("indent") ? { display: "none" } : undefined}>
+        <ToolbarBtn icon={<IndentIncrease size={16} />} label="Indent" onClick={() => editor.chain().focus().indentMore().run()} isDisabled={!editor.can().chain().indentMore().run()} />
+      </div>
+
+      <div data-toolbar-id="s11" style={overflowIds.has("s11") ? { display: "none" } : undefined}>
+        <div className="editor-toolbar-separator" />
+      </div>
+      <div data-toolbar-id="table" style={overflowIds.has("table") ? { display: "none" } : undefined}>
+        <ToolbarBtn icon={<Table2 size={16} />} label="Table" onClick={addTable} />
+      </div>
+      <div data-toolbar-id="hr" style={overflowIds.has("hr") ? { display: "none" } : undefined}>
+        <ToolbarBtn icon={<SeparatorHorizontal size={16} />} label="Horizontal rule" onClick={() => editor!.chain().focus().setHorizontalRule().run()} />
+      </div>
+      <div data-toolbar-id="image" style={overflowIds.has("image") ? { display: "none" } : undefined}>
+        <ToolbarBtn icon={<Image size={16} />} label="Insert image" onClick={addImage} />
+      </div>
+
+      <div data-toolbar-id="s12" style={overflowIds.has("s12") ? { display: "none" } : undefined}>
+        <div className="editor-toolbar-separator" />
+      </div>
+      <div data-toolbar-id="inline-code" style={overflowIds.has("inline-code") ? { display: "none" } : undefined}>
+        <ToolbarBtn icon={<Code size={16} />} label="Inline code" onClick={() => editor!.chain().focus().toggleCode().run()} isActive={editor!.isActive("code")} />
+      </div>
+      <div data-toolbar-id="clear-fmt" style={overflowIds.has("clear-fmt") ? { display: "none" } : undefined}>
+        <ToolbarBtn icon={<RemoveFormatting size={16} />} label="Clear formatting" onClick={() => editor!.chain().focus().unsetAllMarks().clearNodes().run()} />
+      </div>
+
+      <div data-toolbar-id="s13" style={overflowIds.has("s13") ? { display: "none" } : undefined}>
+        <div className="editor-toolbar-separator" />
+      </div>
+      <div data-toolbar-id="file-attach" style={overflowIds.has("file-attach") ? { display: "none" } : undefined}>
+        <ToolbarBtn icon={<FileUp size={16} />} label="File attachment" onClick={addFile} />
+      </div>
+
+      <div data-toolbar-end>
         <div className="editor-toolbar-separator" />
         <div className="editor-toolbar-group">
-          <FontFamilyDropdown editor={editor} />
-          <FontSizeDropdown editor={editor} />
-        </div>
-      </div>
-
-      <div
-        data-toolbar-id="format"
-        style={overflowIds.has("format") ? { display: "none" } : undefined}
-      >
-        <div className="editor-toolbar-separator" />
-        <div className="editor-toolbar-group">
-          <ToolbarBtn
-            icon={<Bold size={16} />}
-            label="Bold"
-            onClick={() => editor.chain().focus().toggleBold().run()}
-            isActive={editor.isActive("bold")}
-          />
-          <ToolbarBtn
-            icon={<Italic size={16} />}
-            label="Italic"
-            onClick={() => editor.chain().focus().toggleItalic().run()}
-            isActive={editor.isActive("italic")}
-          />
-          <ToolbarBtn
-            icon={<Underline size={16} />}
-            label="Underline"
-            onClick={() => editor.chain().focus().toggleUnderline().run()}
-            isActive={editor.isActive("underline")}
-          />
-          <ToolbarBtn
-            icon={<Strikethrough size={16} />}
-            label="Strikethrough"
-            onClick={() => editor.chain().focus().toggleStrike().run()}
-            isActive={editor.isActive("strike")}
+          <MoreToolsDropdown
+            editor={editor}
+            overflowIds={overflowIds}
+            renderOverflowItem={renderOverflowItem}
           />
         </div>
-      </div>
-
-      <div
-        data-toolbar-id="color"
-        style={overflowIds.has("color") ? { display: "none" } : undefined}
-      >
-        <div className="editor-toolbar-separator" />
-        <div className="editor-toolbar-group">
-          <TextColorDropdown editor={editor} />
-          <HighlightColorDropdown editor={editor} />
-        </div>
-      </div>
-
-      <div
-        data-toolbar-id="heading"
-        style={overflowIds.has("heading") ? { display: "none" } : undefined}
-      >
-        <div className="editor-toolbar-separator" />
-        <div className="editor-toolbar-group">
-          <HeadingStyleDropdown editor={editor} />
-        </div>
-      </div>
-
-      <div
-        data-toolbar-id="align"
-        style={overflowIds.has("align") ? { display: "none" } : undefined}
-      >
-        <div className="editor-toolbar-separator" />
-        <div className="editor-toolbar-group">
-          <ToolbarBtn
-            icon={<AlignLeft size={16} />}
-            label="Align left"
-            onClick={() => editor.chain().focus().setTextAlign("left").run()}
-            isActive={editor.isActive({ textAlign: "left" })}
-          />
-          <ToolbarBtn
-            icon={<AlignCenter size={16} />}
-            label="Align center"
-            onClick={() => editor.chain().focus().setTextAlign("center").run()}
-            isActive={editor.isActive({ textAlign: "center" })}
-          />
-          <ToolbarBtn
-            icon={<AlignRight size={16} />}
-            label="Align right"
-            onClick={() => editor.chain().focus().setTextAlign("right").run()}
-            isActive={editor.isActive({ textAlign: "right" })}
-          />
-          <ToolbarBtn
-            icon={<AlignJustify size={16} />}
-            label="Justify"
-            onClick={() => editor.chain().focus().setTextAlign("justify").run()}
-            isActive={editor.isActive({ textAlign: "justify" })}
-          />
-        </div>
-      </div>
-
-      <div
-        data-toolbar-id="list"
-        style={overflowIds.has("list") ? { display: "none" } : undefined}
-      >
-        <div className="editor-toolbar-separator" />
-        <div className="editor-toolbar-group">
-          <ToolbarBtn
-            icon={<List size={16} />}
-            label="Bullet list"
-            onClick={() => editor.chain().focus().toggleBulletList().run()}
-            isActive={editor.isActive("bulletList")}
-          />
-          <ToolbarBtn
-            icon={<ListOrdered size={16} />}
-            label="Ordered list"
-            onClick={() => editor.chain().focus().toggleOrderedList().run()}
-            isActive={editor.isActive("orderedList")}
-          />
-        </div>
-      </div>
-
-      <div
-        data-toolbar-id="line-height"
-        style={overflowIds.has("line-height") ? { display: "none" } : undefined}
-      >
-        <div className="editor-toolbar-separator" />
-        <div className="editor-toolbar-group">
-          <LineHeightDropdown editor={editor} />
-        </div>
-      </div>
-
-      <div className="editor-toolbar-separator" />
-      <div className="editor-toolbar-group">
-        <MoreToolsDropdown
-          editor={editor}
-          overflowIds={overflowIds}
-          renderOverflowItem={renderOverflowItem}
-        />
       </div>
 
     </div>

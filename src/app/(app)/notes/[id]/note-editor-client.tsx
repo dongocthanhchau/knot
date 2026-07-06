@@ -188,23 +188,26 @@ export function NoteEditorClient({ note }: { note: NoteData }) {
         focusMode ? "min-h-screen" : "h-full",
       )}
     >
-      {/* Full-width toolbar — editing tools */}
-      <div className={cn("editor-toolbar-area", focusMode && "bg-background/95 backdrop-blur-sm")}>
-        <EditorToolbar editor={editor} />
-      </div>
-
       {/* Editor area — Google Docs style */}
       <div className="editor-gdocs-scroll-container">
         <div className="editor-gdocs-layout">
-          <div className="editor-gdocs-wrapper" data-focus={focusMode || undefined}>
-            <Editor
-              content={content}
-              onUpdate={handleEditorUpdate}
-              onEditorReady={setEditor}
-              pageLayout
-              zoomLevel={zoomLevel}
-            />
+          <div className="flex flex-col min-w-0 flex-1">
+            {/* Full-width toolbar — editing tools */}
+            <div className={cn("editor-toolbar-area", focusMode && "bg-background/95 backdrop-blur-sm")}>
+              <EditorToolbar editor={editor} />
+            </div>
+
+            <div className="editor-gdocs-wrapper" data-focus={focusMode || undefined}>
+              <Editor
+                content={content}
+                onUpdate={handleEditorUpdate}
+                onEditorReady={setEditor}
+                pageLayout
+                zoomLevel={zoomLevel}
+              />
+            </div>
           </div>
+
           {showOutline && (
             <OutlineSidebar
               editor={editor}

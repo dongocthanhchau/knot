@@ -12,7 +12,7 @@ export function MainContent({
 }: MainContentProps) {
   return (
     <main
-      className={cn("flex-1 overflow-auto p-4 lg:p-6", className)}
+      className={cn("flex-1 overflow-auto p-4 lg:p-6 min-w-0", className)}
       {...props}
     >
       {children}

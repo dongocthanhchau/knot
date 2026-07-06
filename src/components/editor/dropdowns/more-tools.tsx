@@ -5,18 +5,9 @@ import type { Editor } from "@tiptap/react";
 import * as DropdownMenu from "@radix-ui/react-dropdown-menu";
 import {
   MoreHorizontal,
-  Code,
   Subscript,
   Superscript,
-  RemoveFormatting,
-  IndentIncrease,
-  IndentDecrease,
-  Image,
-  SeparatorHorizontal,
   Table2,
-  Link,
-  FileUp,
-  Rows,
 } from "lucide-react";
 import { Button } from "@astryxdesign/core";
 import { EmojiPicker } from "../emoji-picker";
@@ -32,50 +23,6 @@ export function MoreToolsDropdown({
   overflowIds = new Set(),
   renderOverflowItem,
 }: MoreToolsProps) {
-  const addLink = useCallback(() => {
-    const url = window.prompt("URL:");
-    if (url) {
-      editor.chain().focus().setLink({ href: url }).run();
-    }
-  }, [editor]);
-
-  const addImage = useCallback(() => {
-    const input = document.createElement("input");
-    input.type = "file";
-    input.accept = "image/*";
-    input.onchange = () => {
-      const file = input.files?.[0];
-      if (!file) return;
-      const reader = new FileReader();
-      reader.onload = (e) => {
-        editor.chain().focus().setImage({ src: e.target?.result as string }).run();
-      };
-      reader.readAsDataURL(file);
-    };
-    input.click();
-  }, [editor]);
-
-  const addFile = useCallback(() => {
-    const url = window.prompt("File URL:");
-    if (!url) return;
-    const name = window.prompt("File name:", url.split("/").pop() || "file");
-    if (name) {
-      editor
-        .chain()
-        .focus()
-        .insertContent(`<a href="${url}" target="_blank" download>${name}</a>`)
-        .run();
-    }
-  }, [editor]);
-
-  const addTable = useCallback(() => {
-    editor
-      .chain()
-      .focus()
-      .insertTable({ rows: 3, cols: 3, withHeaderRow: true })
-      .run();
-  }, [editor]);
-
   const insertDataSheet = useCallback(() => {
     editor
       .chain()
@@ -112,27 +59,25 @@ export function MoreToolsDropdown({
           align="start"
           sideOffset={4}
         >
-          {overflowIds.size > 0 && (
-            <>
-              <DropdownMenu.Label className="text-xs font-medium text-gray-500 dark:text-gray-400 px-2 py-1.5">
-                More
-              </DropdownMenu.Label>
-              {Array.from(overflowIds).map((id) => (
-                <div key={id}>{renderOverflowItem?.(id)}</div>
-              ))}
-              <DropdownMenu.Separator className="h-px bg-gray-200 dark:bg-gray-700 my-1" />
-            </>
-          )}
+          {(() => {
+            const items = Array.from(overflowIds).map((id) => ({ id, node: renderOverflowItem?.(id) })).filter((x) => x.node != null);
+            if (items.length === 0) return null;
+            return (
+              <>
+                <DropdownMenu.Label className="text-xs font-medium text-gray-500 dark:text-gray-400 px-2 py-1.5">
+                  More
+                </DropdownMenu.Label>
+                {items.map(({ id, node }) => (
+                  <div key={id}>{node}</div>
+                ))}
+                <DropdownMenu.Separator className="h-px bg-gray-200 dark:bg-gray-700 my-1" />
+              </>
+            );
+          })()}
 
           <DropdownMenu.Label className="text-xs font-medium text-gray-500 dark:text-gray-400 px-2 py-1.5">
             Format
           </DropdownMenu.Label>
-          <DropdownMenuItem
-            icon={<Code size={14} />}
-            label="Inline code"
-            isActive={editor.isActive("code")}
-            onClick={() => editor.chain().focus().toggleCode().run()}
-          />
           <DropdownMenuItem
             icon={<Subscript size={14} />}
             label="Subscript"
@@ -145,59 +90,12 @@ export function MoreToolsDropdown({
             isActive={editor.isActive("superscript")}
             onClick={() => editor.chain().focus().toggleSuperscript().run()}
           />
-          <DropdownMenuItem
-            icon={<RemoveFormatting size={14} />}
-            label="Clear formatting"
-            onClick={() => editor.chain().focus().unsetAllMarks().clearNodes().run()}
-          />
-
-          <DropdownMenu.Separator className="h-px bg-gray-200 dark:bg-gray-700 my-1" />
-
-          <DropdownMenu.Label className="text-xs font-medium text-gray-500 dark:text-gray-400 px-2 py-1.5">
-            Indent
-          </DropdownMenu.Label>
-          <DropdownMenuItem
-            icon={<IndentIncrease size={14} />}
-            label="Increase indent"
-            onClick={() => editor.chain().focus().indentMore().run()}
-          />
-          <DropdownMenuItem
-            icon={<IndentDecrease size={14} />}
-            label="Decrease indent"
-            onClick={() => editor.chain().focus().indentLess().run()}
-          />
 
           <DropdownMenu.Separator className="h-px bg-gray-200 dark:bg-gray-700 my-1" />
 
           <DropdownMenu.Label className="text-xs font-medium text-gray-500 dark:text-gray-400 px-2 py-1.5">
             Insert
           </DropdownMenu.Label>
-          <DropdownMenuItem
-            icon={<Link size={14} />}
-            label="Link"
-            isActive={editor.isActive("link")}
-            onClick={addLink}
-          />
-          <DropdownMenuItem
-            icon={<Image size={14} />}
-            label="Image"
-            onClick={addImage}
-          />
-          <DropdownMenuItem
-            icon={<SeparatorHorizontal size={14} />}
-            label="Horizontal rule"
-            onClick={() => editor.chain().focus().setHorizontalRule().run()}
-          />
-          <DropdownMenuItem
-            icon={<FileUp size={14} />}
-            label="File attachment"
-            onClick={addFile}
-          />
-          <DropdownMenuItem
-            icon={<Rows size={14} />}
-            label="Table"
-            onClick={addTable}
-          />
           <DropdownMenuItem
             icon={<Table2 size={14} />}
             label="DataSheet"

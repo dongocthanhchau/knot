@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useState, useCallback, useEffect } from "react";
+import { useRef, useState, useCallback, useLayoutEffect } from "react";
 
 export interface ToolbarSection {
   id: string;
@@ -18,85 +18,96 @@ export function useToolbarCollapse(
   const containerRef = useRef<HTMLDivElement>(null);
   const [overflowIds, setOverflowIds] = useState<Set<string>>(new Set());
   const widthsRef = useRef<Map<string, number>>(new Map());
-  const prevOverflowRef = useRef<Set<string>>(new Set());
-  const rafIdRef = useRef<number>(0);
-  const sectionsRef = useRef(sections);
-  sectionsRef.current = sections;
+  const nonToolbarRef = useRef(0);
 
-  const calculate = useCallback(() => {
+  const calculate = useCallback((updateScale: boolean) => {
     const container = containerRef.current;
     if (!container) return;
 
-    const containerWidth = container.offsetWidth;
+    const viewportWidth = window.innerWidth;
+    const toolbarWidth = container.getBoundingClientRect().width;
 
-    const moreBtn = container.querySelector<HTMLElement>("[data-toolbar-more]");
-    const moreBtnWidth = moreBtn?.offsetWidth ?? 44;
+    // Store non-toolbar width (side nav + outline sidebar + padding)
+    // This is the correct value to subtract from viewport on resize
+    if (updateScale && viewportWidth > 0) {
+      nonToolbarRef.current = viewportWidth - toolbarWidth;
+    }
 
-    const currentSections = sectionsRef.current;
+    // On first call, always set
+    if (nonToolbarRef.current === 0 && viewportWidth > 0) {
+      nonToolbarRef.current = viewportWidth - toolbarWidth;
+    }
 
-    const elements = container.querySelectorAll<HTMLElement>(
-      "[data-toolbar-id]"
-    );
-    elements.forEach((el) => {
+    // Available toolbar width = viewport minus fixed-width non-toolbar areas
+    const effectiveWidth = viewportWidth - nonToolbarRef.current;
+
+    const endEl = container.querySelector<HTMLElement>("[data-toolbar-end]");
+    const moreBtnWidth = endEl?.offsetWidth ?? 44;
+
+    container.querySelectorAll<HTMLElement>("[data-toolbar-id]").forEach((el) => {
       const id = el.getAttribute("data-toolbar-id");
       if (!id) return;
-      if (el.offsetWidth > 0) {
-        widthsRef.current.set(id, el.offsetWidth);
+      const w = el.offsetWidth;
+      if (w > 0) {
+        widthsRef.current.set(id, w);
       }
     });
 
-    const sorted = [...currentSections].sort(
+    const sorted = [...sections].sort(
       (a, b) => a.priority - b.priority
     );
     const overflowed = new Set<string>();
 
     for (const item of sorted) {
-      const totalWidth = currentSections
-        .filter((s) => !overflowed.has(s.id))
-        .reduce(
-          (sum, s) => sum + (widthsRef.current.get(s.id) ?? 0),
-          0
-        );
+      let usedWidth = 0;
+      for (const s of sections) {
+        if (overflowed.has(s.id)) continue;
+        usedWidth += widthsRef.current.get(s.id) ?? 0;
+      }
 
-      if (totalWidth + moreBtnWidth <= containerWidth) {
+      // available width: container's actual CSS width (ResizeObserver fires when it changes)
+      // OR viewport-derived width (when container is stuck)
+      const available = Math.min(toolbarWidth, effectiveWidth);
+
+      if (usedWidth + moreBtnWidth + 16 <= available) {
         break;
       }
       overflowed.add(item.id);
     }
 
-    const prev = prevOverflowRef.current;
-    const changed =
-      prev.size !== overflowed.size ||
-      !Array.from(prev).every((id) => overflowed.has(id));
+    setOverflowIds(overflowed);
+  }, [sections]);
 
-    if (changed) {
-      setOverflowIds(overflowed);
-      prevOverflowRef.current = overflowed;
-    }
-  }, []);
+  const onWindowResize = useCallback(
+    () => calculate(false),
+    [calculate]
+  );
+  const onContainerResize = useCallback(
+    () => calculate(true),
+    [calculate]
+  );
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     const container = containerRef.current;
     if (!container) return;
 
-    const ro = new ResizeObserver(() => {
-      if (rafIdRef.current) {
-        cancelAnimationFrame(rafIdRef.current);
-      }
-      rafIdRef.current = requestAnimationFrame(calculate);
-    });
+    calculate(true);
 
+    const ro = new ResizeObserver(onContainerResize);
     ro.observe(container);
+    if (container.parentElement) ro.observe(container.parentElement);
 
-    requestAnimationFrame(calculate);
+    window.addEventListener("resize", onWindowResize);
+
+    const mo = new MutationObserver(() => calculate(false));
+    mo.observe(container, { childList: true, subtree: true });
 
     return () => {
       ro.disconnect();
-      if (rafIdRef.current) {
-        cancelAnimationFrame(rafIdRef.current);
-      }
+      mo.disconnect();
+      window.removeEventListener("resize", onWindowResize);
     };
-  }, [calculate]);
+  }, [calculate, onContainerResize, onWindowResize]);
 
   return { containerRef, overflowIds };
 }

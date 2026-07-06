@@ -186,20 +186,34 @@ body {
   display: flex;
   align-items: center;
   gap: 2px;
-  padding: 4px 12px;
+  padding: 4px 0 4px 12px;
   background: #fff;
   min-height: 40px;
   flex-wrap: nowrap;
   user-select: none;
-  overflow-x: auto;
+  overflow: hidden;
   flex: 1;
   min-width: 0;
+  position: relative;
 }
 
 .editor-toolbar > div[data-toolbar-id] {
   display: flex;
   flex-direction: row;
   align-items: center;
+  flex-shrink: 0;
+}
+
+[data-toolbar-end] {
+  position: absolute;
+  right: 0;
+  top: 0;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  background: inherit;
+  z-index: 1;
 }
 
 .editor-toolbar-group {
@@ -212,15 +226,12 @@ body {
 .editor-toolbar-area {
   display: flex;
   align-items: center;
-  gap: 4px;
-  padding: 0 8px;
   background: #fff;
   border-bottom: 1px solid #e0e0e0;
   position: sticky;
   top: 0;
   z-index: 20;
   flex-shrink: 0;
-  flex-wrap: wrap;
 }
 .editor-toolbar-area > div:last-child {
   flex-shrink: 0;
@@ -262,8 +273,10 @@ body {
 /* Scroll container for the editor + outline layout */
 .editor-gdocs-scroll-container {
   flex: 1;
-  overflow: auto;
+  overflow-x: hidden;
+  overflow-y: auto;
   min-height: 0;
+  min-width: 0;
 }
 
 /* Horizontal layout holding outline sidebar + editor wrapper */
