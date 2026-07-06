@@ -308,21 +308,26 @@ body {
   background: #fff;
   display: flex;
   flex-direction: column;
-  overflow-y: auto;
 }
 
 .editor-outline-header {
+  position: sticky;
+  top: 0;
+  z-index: 1;
   display: flex;
   align-items: center;
   gap: 8px;
   padding: 6px 12px;
   color: #666;
   border-bottom: 1px solid #e0e0e0;
+  background: inherit;
 }
 
 .editor-outline-list {
   padding: 8px 0;
   flex: 1;
+  min-height: 0;
+  overflow-y: auto;
 }
 
 .editor-outline-item {
