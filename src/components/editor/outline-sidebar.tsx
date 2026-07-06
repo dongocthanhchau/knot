@@ -80,6 +80,14 @@ export function OutlineSidebar({ editor, createdAt, updatedAt, content }: Outlin
     document.body.style.userSelect = "none";
   }, []);
 
+  useEffect(() => {
+    if (activePos === null) return;
+    const active = document.querySelector(".editor-outline-item.editor-outline-active");
+    if (active) {
+      active.scrollIntoView({ block: "nearest", behavior: "smooth" });
+    }
+  }, [activePos]);
+
   const isHeadingActive = useCallback(
     (h: HeadingItem) => {
       if (activePos === null) return false;
