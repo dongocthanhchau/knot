@@ -531,6 +531,54 @@ body {
   background-color: rgba(167, 139, 250, 0.12);
 }
 
+/* ─── Image Styles ─── */
+
+.editor-gdocs-page .ProseMirror img {
+  max-width: 100%;
+  height: auto;
+  display: block;
+  margin: 8px auto;
+  border-radius: 2px;
+}
+
+.editor-gdocs-page .ProseMirror img[style*="float"] {
+  display: inline;
+  margin: 4px 12px;
+}
+
+/* ─── Caption Style ─── */
+
+.editor-gdocs-page .ProseMirror p.caption {
+  font-size: 10pt;
+  font-style: italic;
+  text-align: center;
+  color: #555;
+  margin-top: 2px;
+  margin-bottom: 12px;
+}
+
+.dark .editor-gdocs-page .ProseMirror p.caption {
+  color: #aaa;
+}
+
+/* ─── Figure/Figcaption (for future rich image node) ─── */
+
+.editor-gdocs-page .ProseMirror figure {
+  margin: 12px 0;
+  text-align: center;
+}
+
+.editor-gdocs-page .ProseMirror figcaption {
+  font-size: 10pt;
+  font-style: italic;
+  color: #555;
+  margin-top: 4px;
+}
+
+.dark .editor-gdocs-page .ProseMirror figcaption {
+  color: #aaa;
+}
+
 .editor-toolbar-separator {
   width: 1px;
   height: 20px;
