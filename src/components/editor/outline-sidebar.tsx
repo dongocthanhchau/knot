@@ -125,7 +125,7 @@ export function OutlineSidebar({ editor, createdAt, updatedAt, content }: Outlin
       <div className="editor-outline-header">
         <button
           className={cn(
-            "flex items-center justify-center p-1.5 rounded transition-colors",
+            "flex items-center justify-center p-0 size-7 rounded-[10px] transition-colors",
             activeTab === "outline"
               ? "text-gray-900 dark:text-gray-100 bg-accent/50"
               : "text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300"
@@ -137,7 +137,7 @@ export function OutlineSidebar({ editor, createdAt, updatedAt, content }: Outlin
         </button>
         <button
           className={cn(
-            "flex items-center justify-center p-1.5 rounded transition-colors",
+            "flex items-center justify-center p-0 size-7 rounded-[10px] transition-colors",
             activeTab === "description"
               ? "text-gray-900 dark:text-gray-100 bg-accent/50"
               : "text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300"
