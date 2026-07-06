@@ -87,12 +87,11 @@ function ToolbarBtn({ icon, label, onClick, isActive, isDisabled }: ToolbarButto
 }
 
 export function EditorToolbar({ editor }: ToolbarProps) {
-  if (!editor) return null;
-
   const { containerRef, overflowIds } = useToolbarCollapse(TOOLBAR_SECTIONS);
 
   const renderOverflowItem = useCallback(
     (id: string): ReactNode => {
+      const e = editor!;
       switch (id) {
         case "undo-redo":
           return (
@@ -100,13 +99,13 @@ export function EditorToolbar({ editor }: ToolbarProps) {
               <DropdownMenuItem
                 icon={<Undo2 size={14} />}
                 label="Undo"
-                onClick={() => editor.chain().focus().undo().run()}
+                onClick={() => e.chain().focus().undo().run()}
                 isActive={false}
               />
               <DropdownMenuItem
                 icon={<Redo2 size={14} />}
                 label="Redo"
-                onClick={() => editor.chain().focus().redo().run()}
+                onClick={() => e.chain().focus().redo().run()}
                 isActive={false}
               />
             </Fragment>
@@ -117,7 +116,7 @@ export function EditorToolbar({ editor }: ToolbarProps) {
             <Fragment key="font-overflow">
               <DropdownMenuItem
                 icon={<Type size={14} />}
-                label={`Font: ${editor.getAttributes("textStyle").fontFamily || "Arial"}`}
+                label={`Font: ${e.getAttributes("textStyle").fontFamily || "Arial"}`}
                 onClick={() => {}}
               />
               {FONT_SIZES.slice(0, 8).map((s) => (
@@ -125,7 +124,7 @@ export function EditorToolbar({ editor }: ToolbarProps) {
                   key={`fs-${s}`}
                   icon={<Type size={14} />}
                   label={`${s}px`}
-                  onClick={() => editor.chain().focus().setFontSize(`${s}px`).run()}
+                  onClick={() => e.chain().focus().setFontSize(`${s}px`).run()}
                 />
               ))}
             </Fragment>
@@ -137,26 +136,26 @@ export function EditorToolbar({ editor }: ToolbarProps) {
               <DropdownMenuItem
                 icon={<Bold size={14} />}
                 label="Bold"
-                onClick={() => editor.chain().focus().toggleBold().run()}
-                isActive={editor.isActive("bold")}
+                onClick={() => e.chain().focus().toggleBold().run()}
+                isActive={e.isActive("bold")}
               />
               <DropdownMenuItem
                 icon={<Italic size={14} />}
                 label="Italic"
-                onClick={() => editor.chain().focus().toggleItalic().run()}
-                isActive={editor.isActive("italic")}
+                onClick={() => e.chain().focus().toggleItalic().run()}
+                isActive={e.isActive("italic")}
               />
               <DropdownMenuItem
                 icon={<Underline size={14} />}
                 label="Underline"
-                onClick={() => editor.chain().focus().toggleUnderline().run()}
-                isActive={editor.isActive("underline")}
+                onClick={() => e.chain().focus().toggleUnderline().run()}
+                isActive={e.isActive("underline")}
               />
               <DropdownMenuItem
                 icon={<Strikethrough size={14} />}
                 label="Strikethrough"
-                onClick={() => editor.chain().focus().toggleStrike().run()}
-                isActive={editor.isActive("strike")}
+                onClick={() => e.chain().focus().toggleStrike().run()}
+                isActive={e.isActive("strike")}
               />
             </Fragment>
           );
@@ -173,7 +172,7 @@ export function EditorToolbar({ editor }: ToolbarProps) {
                 <DropdownMenu.Item
                   key={`tc-${c}`}
                   className="flex items-center gap-2 px-2 py-1.5 text-sm rounded cursor-pointer outline-none text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700"
-                  onClick={() => editor.chain().focus().setColor(c).run()}
+                  onClick={() => e.chain().focus().setColor(c).run()}
                 >
                   <span
                     className="w-4 h-4 rounded border border-gray-300 dark:border-gray-600 inline-block"
@@ -190,22 +189,22 @@ export function EditorToolbar({ editor }: ToolbarProps) {
             <Fragment key="heading-overflow">
               <DropdownMenuItem
                 label="Paragraph"
-                onClick={() => editor.chain().focus().setParagraph().run()}
-                isActive={editor.isActive("paragraph")}
+                onClick={() => e.chain().focus().setParagraph().run()}
+                isActive={e.isActive("paragraph")}
               />
               {([1, 2, 3, 4, 5, 6] as const).map((level) => (
                 <DropdownMenuItem
                   key={`h${level}`}
                   label={`Heading ${level}`}
-                  onClick={() => editor.chain().focus().toggleHeading({ level }).run()}
-                  isActive={editor.isActive("heading", { level })}
+                  onClick={() => e.chain().focus().toggleHeading({ level }).run()}
+                  isActive={e.isActive("heading", { level })}
                 />
               ))}
               <DropdownMenuItem
                 icon={<Heading size={14} />}
                 label="Blockquote"
-                onClick={() => editor.chain().focus().toggleBlockquote().run()}
-                isActive={editor.isActive("blockquote")}
+                onClick={() => e.chain().focus().toggleBlockquote().run()}
+                isActive={e.isActive("blockquote")}
               />
             </Fragment>
           );
@@ -216,26 +215,26 @@ export function EditorToolbar({ editor }: ToolbarProps) {
               <DropdownMenuItem
                 icon={<AlignLeft size={14} />}
                 label="Align left"
-                onClick={() => editor.chain().focus().setTextAlign("left").run()}
-                isActive={editor.isActive({ textAlign: "left" })}
+                onClick={() => e.chain().focus().setTextAlign("left").run()}
+                isActive={e.isActive({ textAlign: "left" })}
               />
               <DropdownMenuItem
                 icon={<AlignCenter size={14} />}
                 label="Align center"
-                onClick={() => editor.chain().focus().setTextAlign("center").run()}
-                isActive={editor.isActive({ textAlign: "center" })}
+                onClick={() => e.chain().focus().setTextAlign("center").run()}
+                isActive={e.isActive({ textAlign: "center" })}
               />
               <DropdownMenuItem
                 icon={<AlignRight size={14} />}
                 label="Align right"
-                onClick={() => editor.chain().focus().setTextAlign("right").run()}
-                isActive={editor.isActive({ textAlign: "right" })}
+                onClick={() => e.chain().focus().setTextAlign("right").run()}
+                isActive={e.isActive({ textAlign: "right" })}
               />
               <DropdownMenuItem
                 icon={<AlignJustify size={14} />}
                 label="Justify"
-                onClick={() => editor.chain().focus().setTextAlign("justify").run()}
-                isActive={editor.isActive({ textAlign: "justify" })}
+                onClick={() => e.chain().focus().setTextAlign("justify").run()}
+                isActive={e.isActive({ textAlign: "justify" })}
               />
             </Fragment>
           );
@@ -246,14 +245,14 @@ export function EditorToolbar({ editor }: ToolbarProps) {
               <DropdownMenuItem
                 icon={<List size={14} />}
                 label="Bullet list"
-                onClick={() => editor.chain().focus().toggleBulletList().run()}
-                isActive={editor.isActive("bulletList")}
+                onClick={() => e.chain().focus().toggleBulletList().run()}
+                isActive={e.isActive("bulletList")}
               />
               <DropdownMenuItem
                 icon={<ListOrdered size={14} />}
                 label="Ordered list"
-                onClick={() => editor.chain().focus().toggleOrderedList().run()}
-                isActive={editor.isActive("orderedList")}
+                onClick={() => e.chain().focus().toggleOrderedList().run()}
+                isActive={e.isActive("orderedList")}
               />
             </Fragment>
           );
@@ -270,7 +269,7 @@ export function EditorToolbar({ editor }: ToolbarProps) {
                 <DropdownMenuItem
                   key={`lh-${h}`}
                   label={h}
-                  onClick={() => editor.chain().focus().setLineHeight(h).run()}
+                  onClick={() => e.chain().focus().setLineHeight(h).run()}
                 />
               ))}
             </Fragment>
@@ -282,6 +281,8 @@ export function EditorToolbar({ editor }: ToolbarProps) {
     },
     [editor]
   );
+
+  if (!editor) return null;
 
   return (
     <div ref={containerRef} className="editor-toolbar">

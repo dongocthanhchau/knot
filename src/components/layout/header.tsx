@@ -2,24 +2,8 @@
 
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
-import {
-  TopNav,
-  Button,
-  DropdownMenu,
-  DropdownMenuItem,
-} from "@astryxdesign/core";
-import {
-  ArrowLeft,
-  User,
-  Settings,
-  LogOut,
-  Save,
-  Loader2,
-  Check,
-  Trash2,
-} from "lucide-react";
-import { ThemeToggle } from "@/components/theme/theme-toggle";
-import { signOutAction } from "@/server/auth";
+import { TopNav, Button } from "@astryxdesign/core";
+import { ArrowLeft, Save, Loader2, Check, Trash2, PanelRight, PanelRightClose, ZoomIn, ZoomOut } from "lucide-react";
 import { useFocusMode } from "@/contexts/focus-mode-context";
 import {
   editorHeaderStore,
@@ -77,7 +61,7 @@ export function Header() {
                 editorState.saveStatus === "saving" ? (
                   <Loader2 size={20} className="animate-spin" />
                 ) : editorState.saveStatus === "saved" ? (
-                  <Check size={20} />
+                  <Check size={20} className="text-green-500" />
                 ) : (
                   <Save size={20} />
                 )
@@ -92,75 +76,69 @@ export function Header() {
               }
               onClick={editorState.onSave}
               isDisabled={editorState.saveStatus !== "unsaved"}
-              className={
-                editorState.saveStatus === "saved" ? "text-green-500" : undefined
-              }
             />
             <Button
               variant="ghost"
               isIconOnly
-              icon={<Trash2 size={20} />}
+              icon={<Trash2 size={20} className="text-red-500" />}
               label="Delete note"
               tooltip="Delete note"
               onClick={() => editorState.onDeleteDialogOpen(true)}
             />
             <div className="w-px h-4 bg-border/40 mx-0.5" />
             <FocusModeToggle />
-            <ThemeToggle />
-            <DropdownMenu
-              button={{
-                variant: "ghost",
-                isIconOnly: true,
-                icon: <User size={20} />,
-                label: "User menu",
+            <div className="w-px h-4 bg-border/40 mx-0.5" />
+            <Button
+              variant="ghost"
+              isIconOnly
+              size="sm"
+              icon={<ZoomOut size={16} />}
+              label="Zoom out"
+              tooltip="Zoom out"
+              onClick={() => {
+                const idx = editorState.ZOOM_OPTIONS.indexOf(editorState.zoomLevel);
+                editorState.onZoomChange(editorState.ZOOM_OPTIONS[Math.max(0, idx - 1)]);
               }}
-              placement="below"
+              isDisabled={editorState.zoomLevel <= editorState.ZOOM_OPTIONS[0]}
+            />
+            <select
+              value={editorState.zoomLevel}
+              onChange={(e) => editorState.onZoomChange(Number(e.target.value))}
+              className="text-xs w-14 text-center bg-transparent border-none outline-none cursor-pointer text-gray-700 dark:text-gray-300"
             >
-              <DropdownMenuItem
-                icon={Settings}
-                label="Settings"
-                onClick={() => router.push("/settings")}
-              />
-              <DropdownMenuItem
-                icon={LogOut}
-                label="Sign out"
-                onClick={() => editorState.signOutAction()}
-              />
-            </DropdownMenu>
+              {editorState.ZOOM_OPTIONS.map((z: number) => (
+                <option key={z} value={z}>
+                  {z}%
+                </option>
+              ))}
+            </select>
+            <Button
+              variant="ghost"
+              isIconOnly
+              size="sm"
+              icon={<ZoomIn size={16} />}
+              label="Zoom in"
+              tooltip="Zoom in"
+              onClick={() => {
+                const idx = editorState.ZOOM_OPTIONS.indexOf(editorState.zoomLevel);
+                editorState.onZoomChange(editorState.ZOOM_OPTIONS[Math.min(editorState.ZOOM_OPTIONS.length - 1, idx + 1)]);
+              }}
+              isDisabled={editorState.zoomLevel >= editorState.ZOOM_OPTIONS[editorState.ZOOM_OPTIONS.length - 1]}
+            />
+            <div className="w-px h-4 bg-border/40 mx-0.5" />
+            <Button
+              variant="ghost"
+              isIconOnly
+              icon={editorState.showOutline ? <PanelRightClose size={20} /> : <PanelRight size={20} />}
+              label={editorState.showOutline ? "Hide sidebar" : "Show sidebar"}
+              tooltip={editorState.showOutline ? "Hide sidebar" : "Show sidebar"}
+              onClick={editorState.onToggleOutline}
+            />
           </div>
         }
       />
     );
   }
 
-  return (
-    <TopNav
-      label="Main navigation"
-      endContent={
-        <>
-          <ThemeToggle />
-          <DropdownMenu
-            button={{
-              variant: "ghost",
-              isIconOnly: true,
-              icon: <User size={20} />,
-              label: "User menu",
-            }}
-            placement="below"
-          >
-            <DropdownMenuItem
-              icon={Settings}
-              label="Settings"
-              onClick={() => router.push("/settings")}
-            />
-            <DropdownMenuItem
-              icon={LogOut}
-              label="Sign out"
-              onClick={() => signOutAction()}
-            />
-          </DropdownMenu>
-        </>
-      }
-    />
-  );
+  return null;
 }

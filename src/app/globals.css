@@ -100,6 +100,8 @@ body {
   box-shadow: 0 1px 4px rgba(0,0,0,0.12);
   display: flex;
   flex-direction: column;
+  width: 100%;
+  overflow: visible;
 }
 
 .editor-gdocs-page {
@@ -190,6 +192,8 @@ body {
   flex-wrap: nowrap;
   user-select: none;
   overflow-x: auto;
+  flex: 1;
+  min-width: 0;
 }
 
 .editor-toolbar > div[data-toolbar-id] {
@@ -216,7 +220,7 @@ body {
   top: 0;
   z-index: 20;
   flex-shrink: 0;
-  overflow-x: auto;
+  flex-wrap: wrap;
 }
 .editor-toolbar-area > div:last-child {
   flex-shrink: 0;
@@ -282,8 +286,8 @@ body {
 /* ─── Outline Sidebar ─── */
 
 .editor-outline {
-  width: 220px;
-  min-width: 220px;
+  position: relative;
+  min-width: 160px;
   border-left: 1px solid #e0e0e0;
   background: #fafafa;
   display: flex;
@@ -294,7 +298,7 @@ body {
 .editor-outline-header {
   display: flex;
   align-items: center;
-  justify-content: center;
+  gap: 8px;
   padding: 10px 16px;
   color: #666;
   border-bottom: 1px solid #e0e0e0;

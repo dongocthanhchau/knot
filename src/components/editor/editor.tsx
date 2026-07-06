@@ -130,7 +130,7 @@ export function Editor({
 
   return (
     <div className={className}>
-      <div className="editor-gdocs-container" style={{ width: `calc(21cm * ${zoom})` }}>
+      <div className="editor-gdocs-container">
         <div
           className="editor-gdocs-page"
           style={{

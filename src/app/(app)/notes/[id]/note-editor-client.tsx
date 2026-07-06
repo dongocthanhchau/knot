@@ -2,7 +2,6 @@
 
 import { useState, useEffect, useCallback, useRef } from "react";
 import { useRouter } from "next/navigation";
-import { Save, Loader2, Check, Trash2, PanelRight, PanelRightClose } from "lucide-react";
 
 import { cn } from "@/lib/utils";
 import { Editor } from "@/components/editor/editor";
@@ -11,8 +10,6 @@ import { OutlineSidebar } from "@/components/editor/outline-sidebar";
 import type { Editor as EditorType } from "@tiptap/react";
 import { updateNoteAction, deleteNoteAction } from "@/server/notes";
 import { type SaveStatus } from "@/components/layout/editor-header-store";
-import { signOutAction } from "@/server/auth";
-import { FocusModeToggle } from "@/components/editor/focus-mode-toggle";
 import { useFocusMode } from "@/contexts/focus-mode-context";
 import { Button, Dialog, DialogHeader } from "@astryxdesign/core";
 import { editorHeaderStore } from "@/components/layout/editor-header-store";
@@ -40,6 +37,17 @@ export function NoteEditorClient({ note }: { note: NoteData }) {
   const [editor, setEditor] = useState<EditorType | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
   const [showOutline, setShowOutline] = useState(true);
+  const [zoomLevel, setZoomLevel] = useState(() => {
+    if (typeof window === "undefined") return 100;
+    const saved = localStorage.getItem("knot-editor-zoom");
+    return saved ? Number(saved) : 100;
+  });
+  const ZOOM_OPTIONS = [50, 75, 100, 125, 150, 200];
+
+  // Persist zoom level to localStorage
+  useEffect(() => {
+    localStorage.setItem("knot-editor-zoom", String(zoomLevel));
+  }, [zoomLevel]);
 
   // Keep refs in sync to avoid stale closures in saveNote
   const titleRef = useRef(title);
@@ -148,12 +156,16 @@ export function NoteEditorClient({ note }: { note: NoteData }) {
       isDeleting,
       saveStatus,
       deleteDialogOpen,
+      showOutline,
+      zoomLevel,
+      ZOOM_OPTIONS,
       onTitleChange: handleTitleChange,
       onTitleBlur: handleTitleBlur,
       onSave: handleSaveNow,
       onDeleteDialogOpen: setDeleteDialogOpen,
       onDelete: handleDelete,
-      signOutAction,
+      onToggleOutline: () => setShowOutline((v) => !v),
+      onZoomChange: setZoomLevel,
     });
     return () => editorHeaderStore.setState(null);
   }, [
@@ -161,6 +173,8 @@ export function NoteEditorClient({ note }: { note: NoteData }) {
     isDeleting,
     saveStatus,
     deleteDialogOpen,
+    showOutline,
+    zoomLevel,
     handleTitleChange,
     handleTitleBlur,
     handleSaveNow,
@@ -174,54 +188,9 @@ export function NoteEditorClient({ note }: { note: NoteData }) {
         focusMode ? "min-h-screen" : "h-full",
       )}
     >
-      {/* Full-width toolbar — sticky */}
+      {/* Full-width toolbar — editing tools */}
       <div className={cn("editor-toolbar-area", focusMode && "bg-background/95 backdrop-blur-sm")}>
         <EditorToolbar editor={editor} />
-        <div className="ml-auto flex items-center gap-0.5">
-          {focusMode && (
-            <>
-              <Button
-                variant="ghost"
-                isIconOnly
-                icon={
-                  saveStatus === "saving" ? (
-                    <Loader2 size={18} className="animate-spin" />
-                  ) : saveStatus === "saved" ? (
-                    <Check size={18} />
-                  ) : (
-                    <Save size={18} />
-                  )
-                }
-                label="Save"
-                tooltip={
-                  saveStatus === "saving"
-                    ? "Saving\u2026"
-                    : saveStatus === "saved" || saveStatus === "idle"
-                      ? "Saved"
-                      : "Save"
-                }
-                onClick={handleSaveNow}
-                isDisabled={saveStatus !== "unsaved"}
-              />
-              <Button
-                variant="ghost"
-                isIconOnly
-                icon={<Trash2 size={18} />}
-                label="Delete note"
-                tooltip="Delete note"
-                onClick={() => setDeleteDialogOpen(true)}
-              />
-            </>
-          )}
-          <FocusModeToggle />
-          <button
-            className="editor-outline-toggle"
-            onClick={() => setShowOutline((v) => !v)}
-            title={showOutline ? "Hide outline" : "Show outline"}
-          >
-            {showOutline ? <PanelRightClose size={18} /> : <PanelRight size={18} />}
-          </button>
-        </div>
       </div>
 
       {/* Editor area — Google Docs style */}
@@ -233,9 +202,17 @@ export function NoteEditorClient({ note }: { note: NoteData }) {
               onUpdate={handleEditorUpdate}
               onEditorReady={setEditor}
               pageLayout
+              zoomLevel={zoomLevel}
             />
           </div>
-          {showOutline && <OutlineSidebar editor={editor} />}
+          {showOutline && (
+            <OutlineSidebar
+              editor={editor}
+              createdAt={note.createdAt}
+              updatedAt={note.updatedAt}
+              content={content}
+            />
+          )}
         </div>
       </div>
 

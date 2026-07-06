@@ -7,12 +7,16 @@ export type EditorHeaderState = {
   isDeleting: boolean;
   saveStatus: SaveStatus;
   deleteDialogOpen: boolean;
+  showOutline: boolean;
+  zoomLevel: number;
+  ZOOM_OPTIONS: number[];
   onTitleChange: (e: React.ChangeEvent<HTMLInputElement>) => void;
   onTitleBlur: () => void;
   onSave: () => void;
   onDeleteDialogOpen: (open: boolean) => void;
   onDelete: () => void;
-  signOutAction: () => void;
+  onToggleOutline: () => void;
+  onZoomChange: (level: number) => void;
 };
 
 type Listener = (state: EditorHeaderState | null) => void;
