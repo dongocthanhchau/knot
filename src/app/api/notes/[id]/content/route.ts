@@ -2,7 +2,8 @@ import { NextRequest, NextResponse } from "next/server";
 import { getSession } from "@/lib/auth";
 import { getNoteAction as getNote } from "@/server/notes";
 import { sqlite } from "@/db";
-import mammoth from "mammoth";
+
+export const dynamic = "force-dynamic";
 
 export async function GET(
   _request: NextRequest,
@@ -31,7 +32,10 @@ export async function GET(
       return new NextResponse(null, { status: 204 });
     }
 
-    return new NextResponse(Buffer.from(row.content_docx), {
+    // Force a real copy — Buffer.from(Uint8Array) copies; Buffer.from(arrayBuffer) shares memory
+    const blob = Buffer.from(row.content_docx);
+
+    return new NextResponse(blob, {
       headers: {
         "Content-Type": "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
         "Content-Disposition": `inline; filename="content.docx"`,
@@ -61,25 +65,17 @@ export async function PUT(
       return NextResponse.json({ error: "Not found" }, { status: 404 });
     }
 
-    // Read raw binary body
-    const docxBuffer = await request.arrayBuffer();
-
-    // Extract plain text from DOCX using mammoth
-    let extractedText: string | null = null;
-    try {
-      const result = await mammoth.extractRawText({ buffer: Buffer.from(docxBuffer) });
-      extractedText = result.value;
-    } catch {
-      // Fail silently — text extraction is best-effort
-    }
+    // Read raw binary body as Buffer for BLOB storage
+    const raw = await request.arrayBuffer();
+    const buf = Buffer.from(raw);
 
     const now = new Date().toISOString();
 
     sqlite
-      .prepare("UPDATE notes SET content_docx = ?, updated_at = ?, content = ? WHERE id = ?")
-      .run(Buffer.from(docxBuffer), now, extractedText, id);
+      .prepare("UPDATE notes SET content_docx = ?, updated_at = ? WHERE id = ?")
+      .run(buf, now, id);
 
-    return NextResponse.json({ updatedAt: now, extractedText });
+    return NextResponse.json({ updatedAt: now });
   } catch (error) {
     console.error("PUT /api/notes/[id]/content error:", error);
     return NextResponse.json({ error: "Internal Server Error" }, { status: 500 });

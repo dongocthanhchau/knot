@@ -1,7 +1,9 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useRef } from "react";
 import { useRouter } from "next/navigation";
+import { Upload, Loader2 } from "lucide-react";
+import { cn } from "@/lib/utils";
 import { importCurriculumAction } from "@/server/content-import";
 
 const curriculumData = {
@@ -82,6 +84,13 @@ export function ImportCurriculumView() {
   const [result, setResult] = useState<{ curriculumId: string; lessonIds: string[]; count: number } | null>(null);
   const [error, setError] = useState<string | null>(null);
 
+  // DOCX import state
+  const [docxImporting, setDocxImporting] = useState(false);
+  const [docxResult, setDocxResult] = useState<{ id: string; title: string } | null>(null);
+  const [docxError, setDocxError] = useState<string | null>(null);
+  const [dragOver, setDragOver] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
   const handleImport = async () => {
     setImporting(true);
     setError(null);
@@ -95,15 +104,129 @@ export function ImportCurriculumView() {
     }
   };
 
+  const handleDocxFile = async (file: File) => {
+    if (!file.name.toLowerCase().endsWith(".docx")) {
+      setDocxError("Only .docx files are supported");
+      return;
+    }
+
+    setDocxImporting(true);
+    setDocxError(null);
+    setDocxResult(null);
+
+    try {
+      const formData = new FormData();
+      formData.append("file", file);
+
+      const res = await fetch("/api/notes/import/docx", {
+        method: "POST",
+        body: formData,
+      });
+
+      if (!res.ok) {
+        const body = await res.json();
+        throw new Error(body.error ?? `Server error: ${res.status}`);
+      }
+
+      const data = await res.json();
+      setDocxResult(data);
+    } catch (err) {
+      setDocxError(err instanceof Error ? err.message : "Import failed");
+    } finally {
+      setDocxImporting(false);
+    }
+  };
+
+  const handleDrop = (e: React.DragEvent) => {
+    e.preventDefault();
+    setDragOver(false);
+    const file = e.dataTransfer.files[0];
+    if (file) handleDocxFile(file);
+  };
+
+  const handleDragOver = (e: React.DragEvent) => {
+    e.preventDefault();
+    setDragOver(true);
+  };
+
+  const handleDragLeave = () => setDragOver(false);
+
+  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) handleDocxFile(file);
+  };
+
   return (
     <div className="mx-auto max-w-3xl space-y-6 p-6">
       <div>
-        <h1 className="text-2xl font-semibold tracking-tight">Import Curriculum</h1>
+        <h1 className="text-2xl font-semibold tracking-tight">Import</h1>
         <p className="text-sm text-muted-foreground">
-          Import a structured curriculum into Knot with hierarchical lessons and tags.
+          Import documents or structured curricula into Knot.
         </p>
       </div>
 
+      {/* DOCX Import */}
+      <div className="rounded-lg border bg-card text-card-foreground shadow-sm p-6">
+        <h2 className="text-lg font-semibold mb-2">Import from DOCX</h2>
+        <p className="text-sm text-muted-foreground mb-4">
+          Upload a .docx file to create a new note with its content.
+        </p>
+
+        <div
+          onDrop={handleDrop}
+          onDragOver={handleDragOver}
+          onDragLeave={handleDragLeave}
+          onClick={() => fileInputRef.current?.click()}
+          className={cn(
+            "flex flex-col items-center justify-center rounded-lg border-2 border-dashed p-8 text-center cursor-pointer transition-colors",
+            dragOver
+              ? "border-primary bg-primary/5"
+              : "border-muted-foreground/25 hover:border-muted-foreground/50",
+          )}
+        >
+          <Upload size={24} className="mb-2 text-muted-foreground" />
+          <p className="text-sm font-medium">
+            {docxImporting ? "Importing..." : "Drop a .docx file here or click to select"}
+          </p>
+          <p className="text-xs text-muted-foreground mt-1">.docx files only</p>
+          <input
+            ref={fileInputRef}
+            type="file"
+
+            className="hidden"
+            onChange={handleFileSelect}
+          />
+        </div>
+
+        {docxImporting && (
+          <div className="mt-4 text-sm text-muted-foreground flex items-center gap-2">
+            <Loader2 size={14} className="animate-spin" />
+            Parsing DOCX and creating note...
+          </div>
+        )}
+
+        {docxResult && (
+          <div className="mt-4 space-y-3">
+            <div className="rounded-md bg-green-50 dark:bg-green-950 p-3 text-sm text-green-700 dark:text-green-300">
+              Imported "{docxResult.title}"
+            </div>
+            <button
+              onClick={() => router.push(`/notes/${docxResult.id}`)}
+              className="inline-flex items-center justify-center rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90"
+            >
+              Open Note
+            </button>
+          </div>
+        )}
+
+        {docxError && (
+          <div className="mt-4 rounded-md bg-destructive/10 p-3 text-xs text-destructive">
+            {docxError}
+          </div>
+        )}
+      </div>
+
+      {/* Curriculum Import */}
       <div className="rounded-lg border bg-card text-card-foreground shadow-sm p-6">
         <h2 className="text-lg font-semibold mb-2">{curriculumData.title}</h2>
         <p className="text-sm text-muted-foreground mb-4">{curriculumData.author}</p>

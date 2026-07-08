@@ -3,6 +3,7 @@
 import { sqlite } from "@/db";
 import { generateIdFromEntropySize } from "lucia";
 import { getSession } from "@/lib/auth";
+import { Document, Packer, Paragraph, TextRun } from "docx";
 
 export async function listNotesAction() {
   const { user } = await getSession();
@@ -73,10 +74,17 @@ export async function getNoteAction(id: string) {
 
   const row = sqlite
     .prepare(
-      "SELECT id, title, content, created_at as createdAt, updated_at as updatedAt FROM notes WHERE id = ? AND is_deleted = 0",
+      "SELECT id, title, content, page_settings as pageSettings, created_at as createdAt, updated_at as updatedAt FROM notes WHERE id = ? AND is_deleted = 0",
     )
     .get(id) as
-    | { id: string; title: string; content: string | null; createdAt: string; updatedAt: string }
+    | {
+        id: string;
+        title: string;
+        content: string | null;
+        pageSettings: string | null;
+        createdAt: string;
+        updatedAt: string;
+      }
     | undefined;
 
   return row ?? null;
@@ -94,14 +102,21 @@ export async function createNoteAction(
   const id = generateIdFromEntropySize(10);
   const now = new Date().toISOString();
 
+  // Generate an empty DOCX so the editor loads instead of "No document loaded"
+  const emptyDoc = new Document({
+    sections: [{ children: [new Paragraph({ children: [new TextRun("")] })] }],
+  });
+  const docxBuffer = await Packer.toBuffer(emptyDoc);
+
   sqlite
     .prepare(
-      "INSERT INTO notes (id, title, content, page_settings, font_preferences, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?)",
+      "INSERT INTO notes (id, title, content, content_docx, page_settings, font_preferences, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
     )
     .run(
       id,
       title ?? "Untitled",
       content ? JSON.stringify(content) : null,
+      docxBuffer,
       pageSettings ?? null,
       fontPreferences ?? null,
       now,
@@ -474,6 +489,17 @@ export async function bulkDeleteAction(ids: string[]) {
   return { count: ids.length };
 }
 
+export async function savePropertiesAction(id: string, pageSettings: string) {
+  const { user } = await getSession();
+  if (!user) throw new Error("Unauthorized");
+
+  sqlite
+    .prepare("UPDATE notes SET page_settings = ?, updated_at = ? WHERE id = ?")
+    .run(pageSettings, new Date().toISOString(), id);
+
+  return { success: true };
+}
+
 export async function getBacklinksAction(noteId: string) {
   const { user } = await getSession();
   if (!user) return [];
@@ -542,4 +568,22 @@ export async function getStatsAction() {
   )?.updatedAt ?? null;
 
   return { noteCount, tagCount, trashedCount, lastUpdated };
+}
+
+export async function importDocxAction(name: string, base64: string) {
+  const { user } = await getSession();
+  if (!user) throw new Error("Unauthorized");
+
+  const id = generateIdFromEntropySize(10);
+  const now = new Date().toISOString();
+  const title = name.replace(/\.docx$/i, "");
+  const docxBuffer = Buffer.from(base64, "base64");
+
+  sqlite
+    .prepare(
+      "INSERT INTO notes (id, title, content_docx, created_at, updated_at) VALUES (?, ?, ?, ?, ?)",
+    )
+    .run(id, title, docxBuffer, now, now);
+
+  return { id };
 }

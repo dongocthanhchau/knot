@@ -9,15 +9,15 @@ import {
   Loader2,
   Check,
   Trash2,
-  PanelRightOpen,
 } from "lucide-react";
 
 import { cn } from "@/lib/utils";
-import { DocxEditorWrapper } from "@/components/editor/docx-editor-wrapper";
+import { DocxEditorWrapper, type DocxEditorHandle } from "@/components/editor/docx-editor-wrapper";
 import { RightSidebar, type SidebarTab } from "@/components/editor/right-sidebar";
 import { extractHeadingsFromDoc, type HeadingItem } from "@/lib/editor-utils";
 import type { Document } from "@eigenpal/docx-editor-core";
-import { updateNoteAction, deleteNoteAction, getBacklinksAction, scanAndUpdateLinksAction } from "@/server/notes";
+import { updateNoteAction, deleteNoteAction, getBacklinksAction, scanAndUpdateLinksAction, savePropertiesAction } from "@/server/notes";
+import { parsePageSettings, serializePageSettings, createDefaultProperties, type NoteProperty } from "@/lib/property-types";
 import { type SaveStatus } from "@/components/layout/editor-header-store";
 import { useFocusMode } from "@/contexts/focus-mode-context";
 import { Button, Dialog, DialogHeader } from "@astryxdesign/core";
@@ -27,6 +27,7 @@ interface NoteData {
   id: string;
   title: string;
   content: string | null;
+  pageSettings: string | null;
   createdAt: string;
   updatedAt: string;
 }
@@ -41,11 +42,43 @@ export function NoteEditorClient({ note }: { note: NoteData }) {
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
   const [backlinks, setBacklinks] = useState<Array<{ id: string; title: string }>>([]);
+  const [properties, setProperties] = useState<NoteProperty[]>(() => {
+    const parsed = parsePageSettings(note.pageSettings);
+    if (parsed.properties.length === 0) {
+      return createDefaultProperties(note.createdAt, note.updatedAt);
+    }
+    return parsed.properties;
+  });
 
-  // Right sidebar state
+  // Right sidebar state — persisted in localStorage
+  // Must use server-safe defaults to avoid hydration mismatch (reading
+  // localStorage in useState initializer produces different values on
+  // server vs first client render). After mount, hydrate from localStorage.
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [activeSidebarTab, setActiveSidebarTab] = useState<SidebarTab>("outline");
+
+  // Hydrate from localStorage after mount (avoids hydration mismatch)
+  useEffect(() => {
+    const savedOpen = localStorage.getItem("note-sidebar-open");
+    if (savedOpen === "true") setSidebarOpen(true);
+
+    const savedTab = localStorage.getItem("note-sidebar-tab");
+    if (savedTab === "outline" || savedTab === "tags" || savedTab === "properties") {
+      setActiveSidebarTab(savedTab);
+    }
+  }, []);
+
+  // Persist sidebar state on every change
+  useEffect(() => {
+    localStorage.setItem("note-sidebar-open", String(sidebarOpen));
+  }, [sidebarOpen]);
+  useEffect(() => {
+    localStorage.setItem("note-sidebar-tab", activeSidebarTab);
+  }, [activeSidebarTab]);
   const [headings, setHeadings] = useState<HeadingItem[]>([]);
+
+  // Ref for DocxEditorWrapper imperative handle (scrollToParaId, etc.)
+  const editorWrapperRef = useRef<DocxEditorHandle>(null);
 
   // Debounce ref for heading extraction
   const extractTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -170,6 +203,11 @@ export function NoteEditorClient({ note }: { note: NoteData }) {
     [],
   );
 
+  // Scroll to a heading by paraId — delegates to DocxEditorRef.scrollToParaId
+  const handleScrollToHeading = useCallback((paraId: string) => {
+    editorWrapperRef.current?.scrollToParaId(paraId);
+  }, []);
+
   // Toggle sidebar
   const handleToggleSidebar = useCallback(() => {
     setSidebarOpen((prev) => !prev);
@@ -178,6 +216,14 @@ export function NoteEditorClient({ note }: { note: NoteData }) {
   const handleSidebarTabChange = useCallback((tab: SidebarTab) => {
     setActiveSidebarTab(tab);
   }, []);
+
+  const handlePropertiesChange = useCallback(
+    (updated: NoteProperty[]) => {
+      setProperties(updated);
+      savePropertiesAction(note.id, serializePageSettings({ properties: updated })).catch(() => {});
+    },
+    [note.id],
+  );
 
   return (
     <div
@@ -191,6 +237,7 @@ export function NoteEditorClient({ note }: { note: NoteData }) {
         {/* Editor */}
         <div className="flex-1 overflow-hidden min-w-0">
           <DocxEditorWrapper
+            ref={editorWrapperRef}
             noteId={note.id}
             documentName={title}
             onDocumentNameChange={handleDocumentNameChange}
@@ -209,15 +256,6 @@ export function NoteEditorClient({ note }: { note: NoteData }) {
             )}
             renderTitleBarRight={() => (
               <div className="flex items-center gap-0.5">
-                <Button
-                  variant="ghost"
-                  isIconOnly
-                  size="sm"
-                  icon={<PanelRightOpen size={14} />}
-                  label="Toggle sidebar"
-                  tooltip={sidebarOpen ? "Close sidebar" : "Open sidebar"}
-                  onClick={handleToggleSidebar}
-                />
                 <Button
                   variant="ghost"
                   isIconOnly
@@ -258,6 +296,9 @@ export function NoteEditorClient({ note }: { note: NoteData }) {
           onTabChange={handleSidebarTabChange}
           headings={headings}
           noteId={note.id}
+          onScrollToHeading={handleScrollToHeading}
+          properties={properties}
+          onPropertiesChange={handlePropertiesChange}
         />
       </div>
 

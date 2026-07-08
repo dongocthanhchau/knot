@@ -3,14 +3,14 @@
 import { useEffect, useState, useCallback, useRef } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { FileText, Plus, Trash2, Clock, Search, Pin, PinOff, Upload, CheckSquare, Square, Tag } from "lucide-react";
-import { ImportDialog } from "@/components/notes/import-dialog";
+import { FileText, Plus, Trash2, Clock, Search, Pin, PinOff, Upload, Loader2, CheckSquare, Square, Tag } from "lucide-react";
 import { CreateFromTemplateButton } from "@/components/notes/template-picker";
 import { Button, Dialog, DialogHeader } from "@astryxdesign/core";
 import { Skeleton } from "@astryxdesign/core";
 import {
   listNotesWithTagsAction,
   createNoteAction,
+  updateNoteAction,
   deleteNoteAction,
   searchNotesAction,
   togglePinAction,
@@ -18,6 +18,7 @@ import {
 } from "@/server/notes";
 import { TagBadge } from "./tag-badge";
 import { listTagsAction } from "@/server/tags";
+
 
 type TagInfo = { id: string; name: string; color: string | null };
 
@@ -61,6 +62,44 @@ export function NoteList() {
   const [noteToDelete, setNoteToDelete] = useState<NoteListItem | null>(null);
   const [filterTagId, setFilterTagId] = useState<string | null>(null);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [uploading, setUploading] = useState(false);
+  const docxInputRef = useRef<HTMLInputElement>(null);
+
+  const handleUploadDocx = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (!file.name.toLowerCase().endsWith(".docx")) {
+      setError("Only .docx files are supported");
+      return;
+    }
+    setUploading(true);
+    setError(null);
+    try {
+      // Read file as ArrayBuffer
+      const buf = await file.arrayBuffer();
+      // Create a new note
+      const { id } = await createNoteAction();
+      // Set title from file name
+      const title = file.name.replace(/\.docx$/i, "");
+      await updateNoteAction(id, title, null);
+      // Persist the original DOCX buffer to the server immediately
+      // This is done BEFORE navigation so the editor always loads from the API
+      // (single source of truth) and never has to deal with client-side race conditions.
+      const persistRes = await fetch(`/api/notes/${id}/content`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/octet-stream" },
+        body: buf,
+      });
+      if (!persistRes.ok) throw new Error(`Failed to persist: ${await persistRes.text()}`);
+      // Navigate — editor page will fetch the buffer from the API normally
+      router.push(`/notes/${id}`);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Upload failed");
+    } finally {
+      setUploading(false);
+      if (docxInputRef.current) docxInputRef.current.value = "";
+    }
+  };
 
   const handleBulkDelete = async () => {
     if (selectedIds.size === 0) return;
@@ -186,7 +225,15 @@ export function NoteList() {
         <h2 className="text-lg font-semibold tracking-tight">All Notes</h2>
         <div className="flex items-center gap-2">
           <CreateFromTemplateButton />
-          <ImportDialog />
+          <input ref={docxInputRef} type="file" className="hidden" onChange={handleUploadDocx} />
+          <Button
+            onClick={() => docxInputRef.current?.click()}
+            variant="secondary"
+            size="sm"
+            label={uploading ? "Uploading..." : "Upload DOCX"}
+            icon={uploading ? <Loader2 size={14} className="animate-spin" /> : <Upload size={14} />}
+            isDisabled={uploading}
+          />
           <Button onClick={handleCreate} variant="primary" size="sm" label="New Note" icon={<Plus size={16} />} />
         </div>
       </div>

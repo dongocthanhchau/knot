@@ -26,7 +26,7 @@ import {
 import { signOutAction } from "@/server/auth";
 import { getTrashCountAction } from "@/server/notes";
 import { NoteTree } from "@/components/notes/note-tree";
-import { useTheme } from "next-themes";
+import { useTheme } from "@wrksz/themes/client";
 
 const itemClasses =
   "flex items-center gap-3 w-full h-8 px-2 rounded-lg text-sm hover:bg-accent/50 transition-colors cursor-pointer";
@@ -48,7 +48,7 @@ function ThemeItem({ isCollapsed }: { isCollapsed: boolean }) {
             <button
               key={mode}
               onClick={() => {
-                setTheme(mode.toLowerCase());
+                setTheme(mode.toLowerCase() as "light" | "dark" | "system");
                 setOpen(false);
               }}
               className="flex items-center gap-2 w-full px-2 h-8 text-sm rounded-md hover:bg-accent/50 transition-colors"
