@@ -28,8 +28,24 @@ import {
   SeparatorHorizontal,
   Table2,
   Code,
+  Code2,
   RemoveFormatting,
   FileUp,
+  Merge,
+  Split,
+  Sigma,
+  FileDown,
+  ArrowUpFromLine,
+  ArrowDownToLine,
+  ArrowLeftFromLine,
+  ArrowRightToLine,
+  Trash2,
+  Hash,
+  Search,
+  NotebookText,
+  AlignVerticalJustifyStart,
+  AlignVerticalJustifyCenter,
+  AlignVerticalJustifyEnd,
 } from "lucide-react";
 import { FocusModeToggle } from "./focus-mode-toggle";
 import { FontFamilyDropdown } from "./dropdowns/font-family";
@@ -41,9 +57,11 @@ import { LineHeightDropdown } from "./dropdowns/line-height";
 import { MoreToolsDropdown, DropdownMenuItem } from "./dropdowns/more-tools";
 import { useToolbarCollapse } from "./hooks/use-toolbar-collapse";
 import type { ToolbarSection } from "./hooks/use-toolbar-collapse";
+import { useEditorSelection } from "./hooks/use-editor-selection";
 
 interface ToolbarProps {
   editor: Editor | null;
+  onFindReplace?: () => void;
 }
 
 type ToolbarButtonProps = {
@@ -68,9 +86,16 @@ const TOOLBAR_SECTIONS: ToolbarSection[] = [
   SEP(8), S("line-height", 63),
   SEP(9), S("insert-link", 62),
   SEP(10), S("outdent", 60), S("indent", 61),
-  SEP(11), S("table", 59), S("hr", 58), S("image", 57),
-  SEP(12), S("inline-code", 56), S("clear-fmt", 55),
-  SEP(13), S("file-attach", 54),
+  SEP(11), S("merge-cells", 64), S("split-cell", 63),
+  S("table-row-before", 60), S("table-row-after", 59), S("table-row-delete", 58),
+  S("table-col-before", 57), S("table-col-after", 56), S("table-col-delete", 55),
+  S("valign-top", 54), S("valign-middle", 53), S("valign-bottom", 52),
+  S("table-caption", 51),
+  SEP(12), S("table", 50), S("hr", 49), S("image", 48),
+  SEP(13), S("math", 49), S("toc", 48),
+  SEP(14), S("code-block", 48), S("inline-code", 48), S("clear-fmt", 47),
+  SEP(15), S("page-break", 46),
+  SEP(16), S("find-replace", 44), S("file-attach", 45),
 ];
 
 const TEXT_COLORS = [
@@ -103,8 +128,9 @@ function ToolbarBtn({ icon, label, onClick, isActive, isDisabled }: ToolbarButto
   );
 }
 
-export function EditorToolbar({ editor }: ToolbarProps) {
+export function EditorToolbar({ editor, onFindReplace }: ToolbarProps) {
   const { containerRef, overflowIds } = useToolbarCollapse(TOOLBAR_SECTIONS);
+  useEditorSelection(editor);
 
   const addLink = useCallback(() => {
     const url = window.prompt("URL:");
@@ -126,11 +152,64 @@ export function EditorToolbar({ editor }: ToolbarProps) {
       if (!file) return;
       const reader = new FileReader();
       reader.onload = (e) => {
-        editor!.chain().focus().setImage({ src: e.target?.result as string }).run();
+        const src = e.target?.result as string;
+        const caption = window.prompt("Image caption (optional):", "");
+        const width = window.prompt("Image width (optional, e.g. 400px or 50%):", "");
+        editor!.chain().focus().setImageFigure({ src, caption: caption || "", width: width || "" }).run();
       };
       reader.readAsDataURL(file);
     };
     input.click();
+  }, [editor]);
+
+  const mergeCells = useCallback(() => {
+    editor!.chain().focus().mergeCells().run();
+  }, [editor]);
+
+  const splitCell = useCallback(() => {
+    editor!.chain().focus().splitCell().run();
+  }, [editor]);
+
+  const addMath = useCallback(() => {
+    const latex = window.prompt("LaTeX formula:", "x = \\frac{-b \\pm \\sqrt{b^2 - 4ac}}{2a}");
+    if (latex) {
+      editor!.chain().focus().setMathDisplay(latex).run();
+    }
+  }, [editor]);
+
+  const addPageBreak = useCallback(() => {
+    editor!.chain().focus().setPageBreak().run();
+  }, [editor]);
+
+  const addTableRowBefore = useCallback(() => {
+    editor!.chain().focus().addRowBefore().run();
+  }, [editor]);
+
+  const addTableRowAfter = useCallback(() => {
+    editor!.chain().focus().addRowAfter().run();
+  }, [editor]);
+
+  const deleteTableRow = useCallback(() => {
+    editor!.chain().focus().deleteRow().run();
+  }, [editor]);
+
+  const addTableColBefore = useCallback(() => {
+    editor!.chain().focus().addColumnBefore().run();
+  }, [editor]);
+
+  const addTableColAfter = useCallback(() => {
+    editor!.chain().focus().addColumnAfter().run();
+  }, [editor]);
+
+  const deleteTableCol = useCallback(() => {
+    editor!.chain().focus().deleteColumn().run();
+  }, [editor]);
+
+  const addTableCaption = useCallback(() => {
+    const caption = window.prompt("Table caption:", "");
+    if (caption) {
+      editor!.chain().focus().insertContent(`<p class="table-caption"></p>`).insertContent(caption).run();
+    }
   }, [editor]);
 
   const addFile = useCallback(() => {
@@ -211,6 +290,54 @@ export function EditorToolbar({ editor }: ToolbarProps) {
           return (
             <DropdownMenuItem key="insert-link" icon={<Link size={14} />} label="Insert link" onClick={() => { const url = window.prompt("URL:"); if (url) e.chain().focus().setLink({ href: url }).run(); }} isActive={e.isActive("link")} />
           );
+        case "merge-cells":
+          return (
+            <DropdownMenuItem key="merge-cells" icon={<Merge size={14} />} label="Merge cells" onClick={() => e.chain().focus().mergeCells().run()} isActive={false} />
+          );
+        case "split-cell":
+          return (
+            <DropdownMenuItem key="split-cell" icon={<Split size={14} />} label="Split cell" onClick={() => e.chain().focus().splitCell().run()} isActive={false} />
+          );
+        case "table-row-before":
+          return (
+            <DropdownMenuItem key="table-row-before" icon={<ArrowUpFromLine size={14} />} label="Insert row above" onClick={() => e.chain().focus().addRowBefore().run()} />
+          );
+        case "table-row-after":
+          return (
+            <DropdownMenuItem key="table-row-after" icon={<ArrowDownToLine size={14} />} label="Insert row below" onClick={() => e.chain().focus().addRowAfter().run()} />
+          );
+        case "table-row-delete":
+          return (
+            <DropdownMenuItem key="table-row-delete" icon={<Trash2 size={14} />} label="Delete row" onClick={() => e.chain().focus().deleteRow().run()} />
+          );
+        case "table-col-before":
+          return (
+            <DropdownMenuItem key="table-col-before" icon={<ArrowLeftFromLine size={14} />} label="Insert column left" onClick={() => e.chain().focus().addColumnBefore().run()} />
+          );
+        case "table-col-after":
+          return (
+            <DropdownMenuItem key="table-col-after" icon={<ArrowRightToLine size={14} />} label="Insert column right" onClick={() => e.chain().focus().addColumnAfter().run()} />
+          );
+        case "table-col-delete":
+          return (
+            <DropdownMenuItem key="table-col-delete" icon={<Trash2 size={14} />} label="Delete column" onClick={() => e.chain().focus().deleteColumn().run()} />
+          );
+        case "valign-top":
+          return (
+            <DropdownMenuItem key="valign-top" icon={<AlignVerticalJustifyStart size={14} />} label="Top" onClick={() => e.chain().focus().setCellVerticalAlign("top").run()} isActive={false} />
+          );
+        case "valign-middle":
+          return (
+            <DropdownMenuItem key="valign-middle" icon={<AlignVerticalJustifyCenter size={14} />} label="Middle" onClick={() => e.chain().focus().setCellVerticalAlign("middle").run()} isActive={false} />
+          );
+        case "valign-bottom":
+          return (
+            <DropdownMenuItem key="valign-bottom" icon={<AlignVerticalJustifyEnd size={14} />} label="Bottom" onClick={() => e.chain().focus().setCellVerticalAlign("bottom").run()} isActive={false} />
+          );
+        case "table-caption":
+          return (
+            <DropdownMenuItem key="table-caption" icon={<Hash size={14} />} label="Table caption" onClick={() => { const cap = window.prompt("Table caption:"); if (cap) e.chain().focus().insertContent(`<p class="table-caption"></p>`).insertContent(cap).run(); }} />
+          );
         case "table":
           return (
             <DropdownMenuItem key="table" icon={<Table2 size={14} />} label="Table" onClick={() => e.chain().focus().insertTable({ rows: 3, cols: 3, withHeaderRow: true }).run()} />
@@ -221,7 +348,23 @@ export function EditorToolbar({ editor }: ToolbarProps) {
           );
         case "image":
           return (
-            <DropdownMenuItem key="image" icon={<Image size={14} />} label="Image" onClick={() => { const input = document.createElement("input"); input.type = "file"; input.accept = "image/*"; input.onchange = () => { const file = input.files?.[0]; if (!file) return; const reader = new FileReader(); reader.onload = (ev) => { e.chain().focus().setImage({ src: ev.target?.result as string }).run(); }; reader.readAsDataURL(file); }; input.click(); }} />
+            <DropdownMenuItem key="image" icon={<Image size={14} />} label="Image" onClick={() => { const input = document.createElement("input"); input.type = "file"; input.accept = "image/*"; input.onchange = () => { const file = input.files?.[0]; if (!file) return; const reader = new FileReader(); reader.onload = (ev) => { e.chain().focus().setImageFigure({ src: ev.target?.result as string }).run(); }; reader.readAsDataURL(file); }; input.click(); }} />
+          );
+        case "math":
+          return (
+            <DropdownMenuItem key="math" icon={<Sigma size={14} />} label="Math formula" onClick={() => { const latex = window.prompt("LaTeX:", "x = \\frac{-b \\pm \\sqrt{b^2 - 4ac}}{2a}"); if (latex) e.chain().focus().setMathDisplay(latex).run(); }} />
+          );
+        case "toc":
+          return (
+            <DropdownMenuItem key="toc" icon={<NotebookText size={14} />} label="Table of Contents" onClick={() => e.chain().focus().insertTableOfContents().run()} />
+          );
+        case "page-break":
+          return (
+            <DropdownMenuItem key="page-break" icon={<FileDown size={14} />} label="Page break" onClick={() => e.chain().focus().setPageBreak().run()} />
+          );
+        case "code-block":
+          return (
+            <DropdownMenuItem key="code-block" icon={<Code2 size={14} />} label="Code block" onClick={() => e.chain().focus().toggleCodeBlock().run()} isActive={e.isActive("codeBlock")} />
           );
         case "inline-code":
           return (
@@ -230,6 +373,10 @@ export function EditorToolbar({ editor }: ToolbarProps) {
         case "clear-fmt":
           return (
             <DropdownMenuItem key="clear-fmt" icon={<RemoveFormatting size={14} />} label="Clear formatting" onClick={() => e.chain().focus().unsetAllMarks().clearNodes().run()} />
+          );
+        case "find-replace":
+          return (
+            <DropdownMenuItem key="find-replace" icon={<Search size={14} />} label="Find & Replace" onClick={() => { onFindReplace ? onFindReplace() : window.dispatchEvent(new CustomEvent('knot:toggle-find')); }} />
           );
         case "file-attach":
           return (
@@ -419,6 +566,43 @@ export function EditorToolbar({ editor }: ToolbarProps) {
       <div data-toolbar-id="table" style={overflowIds.has("table") ? { display: "none" } : undefined}>
         <ToolbarBtn icon={<Table2 size={16} />} label="Table" onClick={addTable} />
       </div>
+      <div data-toolbar-id="merge-cells" style={overflowIds.has("merge-cells") ? { display: "none" } : undefined}>
+        <ToolbarBtn icon={<Merge size={16} />} label="Merge cells" onClick={mergeCells} isDisabled={!editor!.can().chain().mergeCells().run()} />
+      </div>
+      <div data-toolbar-id="split-cell" style={overflowIds.has("split-cell") ? { display: "none" } : undefined}>
+        <ToolbarBtn icon={<Split size={16} />} label="Split cell" onClick={splitCell} isDisabled={!editor!.can().chain().splitCell().run()} />
+      </div>
+      <div data-toolbar-id="table-row-before" style={overflowIds.has("table-row-before") ? { display: "none" } : undefined}>
+        <ToolbarBtn icon={<ArrowUpFromLine size={16} />} label="Insert row above" onClick={addTableRowBefore} isDisabled={!editor!.can().chain().addRowBefore().run()} />
+      </div>
+      <div data-toolbar-id="table-row-after" style={overflowIds.has("table-row-after") ? { display: "none" } : undefined}>
+        <ToolbarBtn icon={<ArrowDownToLine size={16} />} label="Insert row below" onClick={addTableRowAfter} isDisabled={!editor!.can().chain().addRowAfter().run()} />
+      </div>
+      <div data-toolbar-id="table-row-delete" style={overflowIds.has("table-row-delete") ? { display: "none" } : undefined}>
+        <ToolbarBtn icon={<Trash2 size={16} />} label="Delete row" onClick={deleteTableRow} isDisabled={!editor!.can().chain().deleteRow().run()} />
+      </div>
+      <div data-toolbar-id="table-col-before" style={overflowIds.has("table-col-before") ? { display: "none" } : undefined}>
+        <ToolbarBtn icon={<ArrowLeftFromLine size={16} />} label="Insert column left" onClick={addTableColBefore} isDisabled={!editor!.can().chain().addColumnBefore().run()} />
+      </div>
+      <div data-toolbar-id="table-col-after" style={overflowIds.has("table-col-after") ? { display: "none" } : undefined}>
+        <ToolbarBtn icon={<ArrowRightToLine size={16} />} label="Insert column right" onClick={addTableColAfter} isDisabled={!editor!.can().chain().addColumnAfter().run()} />
+      </div>
+      <div data-toolbar-id="table-col-delete" style={overflowIds.has("table-col-delete") ? { display: "none" } : undefined}>
+        <ToolbarBtn icon={<Trash2 size={16} />} label="Delete column" onClick={deleteTableCol} isDisabled={!editor!.can().chain().deleteColumn().run()} />
+      </div>
+      <div className="editor-toolbar-separator" />
+      <div data-toolbar-id="valign-top" style={overflowIds.has("valign-top") ? { display: "none" } : undefined}>
+        <ToolbarBtn icon={<AlignVerticalJustifyStart size={16} />} label="Top" onClick={() => editor!.chain().focus().setCellVerticalAlign("top").run()} />
+      </div>
+      <div data-toolbar-id="valign-middle" style={overflowIds.has("valign-middle") ? { display: "none" } : undefined}>
+        <ToolbarBtn icon={<AlignVerticalJustifyCenter size={16} />} label="Middle" onClick={() => editor!.chain().focus().setCellVerticalAlign("middle").run()} />
+      </div>
+      <div data-toolbar-id="valign-bottom" style={overflowIds.has("valign-bottom") ? { display: "none" } : undefined}>
+        <ToolbarBtn icon={<AlignVerticalJustifyEnd size={16} />} label="Bottom" onClick={() => editor!.chain().focus().setCellVerticalAlign("bottom").run()} />
+      </div>
+      <div data-toolbar-id="table-caption" style={overflowIds.has("table-caption") ? { display: "none" } : undefined}>
+        <ToolbarBtn icon={<Hash size={16} />} label="Table caption" onClick={addTableCaption} />
+      </div>
       <div data-toolbar-id="hr" style={overflowIds.has("hr") ? { display: "none" } : undefined}>
         <ToolbarBtn icon={<SeparatorHorizontal size={16} />} label="Horizontal rule" onClick={() => editor!.chain().focus().setHorizontalRule().run()} />
       </div>
@@ -429,6 +613,19 @@ export function EditorToolbar({ editor }: ToolbarProps) {
       <div data-toolbar-id="s12" style={overflowIds.has("s12") ? { display: "none" } : undefined}>
         <div className="editor-toolbar-separator" />
       </div>
+      <div data-toolbar-id="math" style={overflowIds.has("math") ? { display: "none" } : undefined}>
+        <ToolbarBtn icon={<Sigma size={16} />} label="Math formula" onClick={addMath} />
+      </div>
+      <div data-toolbar-id="toc" style={overflowIds.has("toc") ? { display: "none" } : undefined}>
+        <ToolbarBtn icon={<NotebookText size={16} />} label="Table of Contents" onClick={() => editor!.chain().focus().insertTableOfContents().run()} />
+      </div>
+
+      <div data-toolbar-id="s13" style={overflowIds.has("s13") ? { display: "none" } : undefined}>
+        <div className="editor-toolbar-separator" />
+      </div>
+      <div data-toolbar-id="code-block" style={overflowIds.has("code-block") ? { display: "none" } : undefined}>
+        <ToolbarBtn icon={<Code2 size={16} />} label="Code block" onClick={() => editor!.chain().focus().toggleCodeBlock().run()} isActive={editor!.isActive("codeBlock")} />
+      </div>
       <div data-toolbar-id="inline-code" style={overflowIds.has("inline-code") ? { display: "none" } : undefined}>
         <ToolbarBtn icon={<Code size={16} />} label="Inline code" onClick={() => editor!.chain().focus().toggleCode().run()} isActive={editor!.isActive("code")} />
       </div>
@@ -436,8 +633,18 @@ export function EditorToolbar({ editor }: ToolbarProps) {
         <ToolbarBtn icon={<RemoveFormatting size={16} />} label="Clear formatting" onClick={() => editor!.chain().focus().unsetAllMarks().clearNodes().run()} />
       </div>
 
-      <div data-toolbar-id="s13" style={overflowIds.has("s13") ? { display: "none" } : undefined}>
+      <div data-toolbar-id="s14" style={overflowIds.has("s14") ? { display: "none" } : undefined}>
         <div className="editor-toolbar-separator" />
+      </div>
+      <div data-toolbar-id="page-break" style={overflowIds.has("page-break") ? { display: "none" } : undefined}>
+        <ToolbarBtn icon={<FileDown size={16} />} label="Page break" onClick={addPageBreak} />
+      </div>
+
+      <div data-toolbar-id="s15" style={overflowIds.has("s15") ? { display: "none" } : undefined}>
+        <div className="editor-toolbar-separator" />
+      </div>
+      <div data-toolbar-id="find-replace" style={overflowIds.has("find-replace") ? { display: "none" } : undefined}>
+        <ToolbarBtn icon={<Search size={16} />} label="Find & Replace" onClick={() => { onFindReplace ? onFindReplace() : window.dispatchEvent(new CustomEvent('knot:toggle-find')); }} />
       </div>
       <div data-toolbar-id="file-attach" style={overflowIds.has("file-attach") ? { display: "none" } : undefined}>
         <ToolbarBtn icon={<FileUp size={16} />} label="File attachment" onClick={addFile} />

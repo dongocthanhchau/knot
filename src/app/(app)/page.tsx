@@ -1,4 +1,6 @@
 import { FileText, Tags, Brain, Activity } from "lucide-react";
+import { listNotesAction } from "@/server/notes";
+import { listTagsAction } from "@/server/tags";
 
 function StatCard({
   title,
@@ -26,6 +28,10 @@ function StatCard({
 }
 
 export default async function DashboardPage() {
+  const [notes, tags] = await Promise.all([listNotesAction(), listTagsAction()]);
+  const today = new Date().toISOString().slice(0, 10);
+  const recentActivity = notes.filter((n) => n.updatedAt >= today).length;
+
   return (
     <div className="space-y-6">
       <div>
@@ -38,13 +44,13 @@ export default async function DashboardPage() {
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
         <StatCard
           title="Total Notes"
-          value="—"
+          value={String(notes.length)}
           icon={FileText}
           description="Notes in your graph"
         />
         <StatCard
           title="Tags"
-          value="—"
+          value={String(tags.length)}
           icon={Tags}
           description="Active tags"
         />
@@ -56,7 +62,7 @@ export default async function DashboardPage() {
         />
         <StatCard
           title="Recent Activity"
-          value="—"
+          value={String(recentActivity)}
           icon={Activity}
           description="Updates today"
         />

@@ -1,6 +1,7 @@
 @import "tailwindcss";
 @import "@astryxdesign/core/astryx.css";
 @import "@astryxdesign/theme-neutral/theme.css";
+@import "katex/dist/katex.min.css";
 
 @custom-variant dark (&:is(.dark *));
 
@@ -488,6 +489,13 @@ body {
   min-width: 40px;
 }
 
+.editor-gdocs-page .ProseMirror td.valign-top,
+.editor-gdocs-page .ProseMirror th.valign-top { vertical-align: top; }
+.editor-gdocs-page .ProseMirror td.valign-middle,
+.editor-gdocs-page .ProseMirror th.valign-middle { vertical-align: middle; }
+.editor-gdocs-page .ProseMirror td.valign-bottom,
+.editor-gdocs-page .ProseMirror th.valign-bottom { vertical-align: bottom; }
+
 .editor-gdocs-page .ProseMirror th {
   background: #f5f5f5;
   font-weight: 600;
@@ -529,6 +537,115 @@ body {
 
 .dark .editor-gdocs-page .ProseMirror .selectedCell {
   background-color: rgba(167, 139, 250, 0.12);
+}
+
+/* ─── Heading Auto-Numbering ─── */
+
+.editor-gdocs-page .ProseMirror h1 {
+  counter-reset: h2-counter figure-counter table-counter;
+  counter-increment: h1-counter;
+}
+
+.editor-gdocs-page .ProseMirror h2 {
+  counter-reset: h3-counter;
+  counter-increment: h2-counter;
+}
+
+.editor-gdocs-page .ProseMirror h3 {
+  counter-reset: h4-counter;
+  counter-increment: h3-counter;
+}
+
+.editor-gdocs-page .ProseMirror h4 {
+  counter-reset: h5-counter;
+  counter-increment: h4-counter;
+}
+
+.editor-gdocs-page .ProseMirror h5 {
+  counter-reset: h6-counter;
+  counter-increment: h5-counter;
+}
+
+.editor-gdocs-page .ProseMirror h6 {
+  counter-increment: h6-counter;
+}
+
+.editor-gdocs-page .ProseMirror h1::before {
+  content: counter(h1-counter) ". ";
+}
+
+.editor-gdocs-page .ProseMirror h2::before {
+  content: counter(h1-counter) "." counter(h2-counter) ". ";
+}
+
+.editor-gdocs-page .ProseMirror h3::before {
+  content: counter(h1-counter) "." counter(h2-counter) "." counter(h3-counter) ". ";
+}
+
+.editor-gdocs-page .ProseMirror h4::before {
+  content: counter(h1-counter) "." counter(h2-counter) "." counter(h3-counter) "." counter(h4-counter) ". ";
+}
+
+/* ─── Print Layout & Page Numbers ─── */
+
+@media print {
+  @page {
+    margin: 2cm;
+    size: A4;
+    @bottom-center {
+      content: counter(page);
+      font-size: 10pt;
+      color: #666;
+    }
+  }
+
+  @page :left {
+    margin-left: 2.5cm;
+    @bottom-left {
+      content: counter(page);
+      font-size: 10pt;
+      color: #666;
+    }
+    @bottom-center { content: none; }
+  }
+
+  @page :right {
+    margin-right: 2.5cm;
+    @bottom-right {
+      content: counter(page);
+      font-size: 10pt;
+      color: #666;
+    }
+    @bottom-center { content: none; }
+  }
+
+  body {
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+
+  .editor-gdocs-page .ProseMirror {
+    orphans: 3;
+    widows: 3;
+  }
+
+  .editor-gdocs-page .ProseMirror h1,
+  .editor-gdocs-page .ProseMirror h2,
+  .editor-gdocs-page .ProseMirror h3,
+  .editor-gdocs-page .ProseMirror h4 {
+    page-break-after: avoid;
+    break-after: avoid;
+  }
+
+  .editor-toolbar-area,
+  .editor-outline {
+    display: none !important;
+  }
+
+  .editor-gdocs-wrapper {
+    box-shadow: none !important;
+    border: none !important;
+  }
 }
 
 /* ─── DOCX Typography & Spacing ─── */
@@ -603,11 +720,43 @@ body {
   color: #aaa;
 }
 
-/* ─── Figure/Figcaption (for future rich image node) ─── */
+/* ─── Image Figure (with caption + resize) ─── */
 
-.editor-gdocs-page .ProseMirror figure {
+.editor-gdocs-page .ProseMirror figure.image-figure {
   margin: 12px 0;
   text-align: center;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.editor-gdocs-page .ProseMirror figure.image-figure img {
+  max-width: 100%;
+  height: auto;
+  border-radius: 2px;
+  cursor: default;
+}
+
+.editor-gdocs-page .ProseMirror figure.image-figure img[width] {
+  height: auto;
+}
+
+.editor-gdocs-page .ProseMirror figure.image-figure img.resizable-img {
+  resize: both;
+  overflow: hidden;
+}
+
+.editor-gdocs-page .ProseMirror figure.image-figure:focus-within,
+.editor-gdocs-page .ProseMirror figure.image-figure.ProseMirror-selectednode {
+  outline: 2px solid #7c3aed;
+  outline-offset: 2px;
+  border-radius: 2px;
+}
+
+.editor-gdocs-page .ProseMirror figure.image-figure img.resizable-img::-webkit-resizer {
+  border: 2px solid #7c3aed;
+  border-radius: 2px;
+  background: rgba(124, 58, 237, 0.15);
 }
 
 .editor-gdocs-page .ProseMirror figcaption {
@@ -619,6 +768,83 @@ body {
 
 .dark .editor-gdocs-page .ProseMirror figcaption {
   color: #aaa;
+}
+
+/* ─── Figure / Table CSS Counters ─── */
+
+.editor-gdocs-page .ProseMirror {
+  counter-reset: h1-counter figure-counter table-counter;
+}
+
+.editor-gdocs-page .ProseMirror figure.image-figure {
+  counter-increment: figure-counter;
+}
+
+.editor-gdocs-page .ProseMirror table {
+  counter-increment: table-counter;
+}
+
+/* Show figure counter in caption: "Hình X.Y: caption" */
+.editor-gdocs-page .ProseMirror figure.image-figure figcaption::before {
+  content: "Hình " counter(h1-counter) "." counter(figure-counter) ": ";
+  font-weight: 600;
+  font-style: normal;
+}
+
+.dark .editor-gdocs-page .ProseMirror figure.image-figure figcaption::before {
+  color: #ccc;
+}
+
+/* Table level-1 heading style for table captions */
+.editor-gdocs-page .ProseMirror .table-caption::before {
+  content: "Bảng " counter(h1-counter) "." counter(table-counter) ": ";
+  font-weight: 600;
+  font-style: normal;
+}
+
+/* ─── Math Formulas ─── */
+
+.editor-gdocs-page .ProseMirror .math-inline {
+  display: inline-block;
+  padding: 0 2px;
+  cursor: pointer;
+}
+
+.editor-gdocs-page .ProseMirror .math-inline .katex {
+  font-size: 1.1em;
+}
+
+.editor-gdocs-page .ProseMirror .math-display {
+  margin: 12px 0;
+  padding: 8px 0;
+  text-align: center;
+  overflow-x: auto;
+  cursor: pointer;
+}
+
+.editor-gdocs-page .ProseMirror .math-display .katex-display {
+  margin: 0;
+}
+
+/* ─── Page Break ─── */
+
+.editor-gdocs-page .ProseMirror .page-break {
+  height: 0;
+  margin: 0;
+  border: none;
+  page-break-after: always;
+  break-after: page;
+}
+
+.editor-gdocs-page .ProseMirror .page-break::before {
+  content: "";
+  display: block;
+  border-top: 2px dashed var(--border, #d0d0d0);
+  margin: 12px 0;
+}
+
+.editor-gdocs-page .ProseMirror .page-break:hover::before {
+  border-top-color: var(--primary, #7c3aed);
 }
 
 .editor-toolbar-separator {
@@ -781,4 +1007,240 @@ body {
 
 .dark .color-reset:hover {
   background: #444;
+}
+
+/* ─── Selection Toolbar (Bubble) ─── */
+
+.selection-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  background: #1a1a1a;
+  color: #eee;
+  border-radius: 6px;
+  padding: 4px 6px;
+  font-size: 12px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.35);
+  white-space: nowrap;
+}
+
+.selection-toolbar .st-label {
+  padding: 2px 5px;
+  font-size: 11px;
+  opacity: 0.85;
+  cursor: default;
+  font-family: var(--font-sans, system-ui, sans-serif);
+}
+
+.selection-toolbar .st-block {
+  font-weight: 600;
+  color: #bbb;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  font-size: 10px;
+}
+
+.selection-toolbar .st-sep {
+  width: 1px;
+  height: 16px;
+  background: #444;
+  margin: 0 3px;
+}
+
+.selection-toolbar .st-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 24px;
+  border: none;
+  border-radius: 4px;
+  background: transparent;
+  color: #ccc;
+  cursor: pointer;
+  padding: 0;
+  transition: background 0.1s;
+}
+
+.selection-toolbar .st-btn:hover {
+  background: #333;
+  color: #fff;
+}
+
+.selection-toolbar .st-btn.active {
+  background: #7c3aed;
+  color: #fff;
+}
+
+.selection-toolbar .st-btn.active:hover {
+  background: #6d28d9;
+}
+
+/* ─── Find & Replace Dialog ─── */
+
+.find-replace-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 100;
+}
+
+.find-replace-dialog {
+  position: absolute;
+  top: 60px;
+  right: 60px;
+  background: var(--bg, #fff);
+  border: 1px solid var(--border, #e0e0e0);
+  border-radius: 8px;
+  box-shadow: 0 4px 16px rgba(0,0,0,0.15);
+  padding: 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 320px;
+}
+
+.fr-row {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.fr-input {
+  flex: 1;
+  height: 28px;
+  padding: 0 8px;
+  font-size: 13px;
+  border: 1px solid var(--border, #d0d0d0);
+  border-radius: 4px;
+  background: var(--bg, #fff);
+  color: inherit;
+  outline: none;
+}
+
+.fr-input:focus {
+  border-color: #7c3aed;
+  box-shadow: 0 0 0 2px rgba(124, 58, 237, 0.15);
+}
+
+.fr-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border: 1px solid transparent;
+  border-radius: 4px;
+  background: transparent;
+  color: inherit;
+  cursor: pointer;
+  padding: 0;
+  font-size: 12px;
+}
+
+.fr-btn:hover {
+  background: rgba(0,0,0,0.06);
+}
+
+.fr-btn-primary {
+  width: auto;
+  padding: 0 10px;
+  background: #7c3aed;
+  color: #fff;
+  font-weight: 600;
+}
+
+.fr-btn-primary:hover {
+  background: #6d28d9;
+}
+
+.fr-info {
+  font-size: 11px;
+  color: #888;
+  padding: 0 4px;
+}
+
+.dark .find-replace-dialog {
+  background: #252525;
+  border-color: #444;
+}
+
+.dark .fr-input {
+  background: #1a1a1a;
+  border-color: #444;
+  color: #e0e0e0;
+}
+
+.dark .fr-btn:hover {
+  background: rgba(255,255,255,0.08);
+}
+
+/* ─── Table Caption ─── */
+
+.table-caption {
+  font-size: 0.875rem;
+  font-style: italic;
+  color: #555;
+  margin-top: 4px;
+  padding-top: 0;
+}
+
+.dark .table-caption {
+  color: #aaa;
+}
+
+/* ─── Table of Contents ─── */
+
+.table-of-contents {
+  border: 1px solid var(--border, #e0e0e0);
+  border-radius: 6px;
+  padding: 16px 20px;
+  margin: 16px 0;
+  background: rgba(124, 58, 237, 0.03);
+}
+
+.table-of-contents h2 {
+  font-size: 1rem;
+  font-weight: 700;
+  margin: 0 0 8px 0;
+  color: #7c3aed;
+}
+
+.toc-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.toc-item {
+  padding: 2px 4px;
+  font-size: 0.875rem;
+  color: #555;
+  cursor: pointer;
+  line-height: 1.6;
+  border-radius: 3px;
+  transition: background 0.15s;
+}
+
+.toc-item:hover {
+  background: rgba(124, 58, 237, 0.08);
+  color: #222;
+}
+
+.toc-level-1 { font-weight: 600; }
+.toc-level-2 { font-weight: 500; }
+.toc-level-3 { font-weight: 400; }
+.toc-level-4 { font-weight: 400; font-size: 0.8125rem; }
+
+.dark .table-of-contents {
+  border-color: #444;
+  background: rgba(124, 58, 237, 0.08);
+}
+
+.dark .toc-item {
+  color: #aaa;
+}
+
+.dark .toc-item:hover {
+  background: rgba(124, 58, 237, 0.15);
+  color: #eee;
 }

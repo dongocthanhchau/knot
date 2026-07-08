@@ -1,4 +1,4 @@
-import { sqliteTable, text, integer, primaryKey } from "drizzle-orm/sqlite-core";
+import { sqliteTable, text, integer, blob, primaryKey } from "drizzle-orm/sqlite-core";
 
 export const users = sqliteTable("users", {
   id: text("id").primaryKey(),
@@ -16,6 +16,7 @@ export const notes = sqliteTable("notes", {
   id: text("id").primaryKey(),
   title: text("title").notNull(),
   content: text("content"),
+  contentDocx: blob("content_docx", { mode: "buffer" }),
   parentId: text("parent_id"),
   isDeleted: integer("is_deleted").default(0),
   createdAt: text("created_at").notNull(),
@@ -46,6 +47,7 @@ export const noteVersions = sqliteTable("note_versions", {
   id: text("id").primaryKey(),
   noteId: text("note_id").references(() => notes.id),
   content: text("content"),
+  contentDocx: blob("content_docx", { mode: "buffer" }),
   versionNumber: integer("version_number").notNull(),
   createdAt: text("created_at").notNull(),
 });
@@ -54,6 +56,7 @@ export const templates = sqliteTable("templates", {
   id: text("id").primaryKey(),
   name: text("name").notNull(),
   content: text("content").notNull(),
+  contentDocx: blob("content_docx", { mode: "buffer" }),
   category: text("category").default("general"),
   createdAt: text("created_at").notNull(),
 });

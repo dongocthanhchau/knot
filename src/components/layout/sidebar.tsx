@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import {
   SideNav,
@@ -21,17 +21,12 @@ import {
   ChevronLeft,
   Sun,
   Moon,
+  Upload,
 } from "lucide-react";
 import { signOutAction } from "@/server/auth";
+import { getTrashCountAction } from "@/server/notes";
+import { NoteTree } from "@/components/notes/note-tree";
 import { useTheme } from "next-themes";
-
-const navItems = [
-  { href: "/", label: "Dashboard", icon: LayoutDashboard },
-  { href: "/notes", label: "Notes", icon: FileText },
-  { href: "/tags", label: "Tags", icon: Tags },
-  { href: "/notes/trash", label: "Trash", icon: Trash2 },
-  { href: "/settings", label: "Settings", icon: Settings },
-];
 
 const itemClasses =
   "flex items-center gap-3 w-full h-8 px-2 rounded-lg text-sm hover:bg-accent/50 transition-colors cursor-pointer";
@@ -125,6 +120,20 @@ function SidebarFooter() {
 
 export function Sidebar() {
   const pathname = usePathname();
+  const [trashCount, setTrashCount] = useState(0);
+
+  useEffect(() => {
+    getTrashCountAction().then(setTrashCount).catch(() => {});
+  }, []);
+
+  const navItems = [
+    { href: "/", label: "Dashboard", icon: LayoutDashboard },
+    { href: "/notes", label: "Notes", icon: FileText },
+    { href: "/tags", label: "Tags", icon: Tags },
+    { href: "/import", label: "Import", icon: Upload },
+    { href: "/notes/trash", label: `Trash${trashCount > 0 ? ` (${trashCount})` : ""}`, icon: Trash2 },
+    { href: "/settings", label: "Settings", icon: Settings },
+  ];
 
   return (
     <SideNav
@@ -166,6 +175,10 @@ export function Sidebar() {
           );
         })}
       </SideNavSection>
+
+      <div className="py-2">
+        <NoteTree />
+      </div>
     </SideNav>
   );
 }

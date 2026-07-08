@@ -2,17 +2,25 @@
 
 import { useState, useEffect, useCallback, useRef } from "react";
 import { useRouter } from "next/navigation";
+import {
+  Link2,
+  ArrowLeft,
+  Save,
+  Loader2,
+  Check,
+  Trash2,
+  PanelRightOpen,
+} from "lucide-react";
 
 import { cn } from "@/lib/utils";
-import { Editor } from "@/components/editor/editor";
-import { EditorToolbar } from "@/components/editor/editor-toolbar";
-import { OutlineSidebar } from "@/components/editor/outline-sidebar";
-import type { Editor as EditorType } from "@tiptap/react";
-import { updateNoteAction, deleteNoteAction } from "@/server/notes";
+import { DocxEditorWrapper } from "@/components/editor/docx-editor-wrapper";
+import { RightSidebar, type SidebarTab } from "@/components/editor/right-sidebar";
+import { extractHeadingsFromDoc, type HeadingItem } from "@/lib/editor-utils";
+import type { Document } from "@eigenpal/docx-editor-core";
+import { updateNoteAction, deleteNoteAction, getBacklinksAction, scanAndUpdateLinksAction } from "@/server/notes";
 import { type SaveStatus } from "@/components/layout/editor-header-store";
 import { useFocusMode } from "@/contexts/focus-mode-context";
 import { Button, Dialog, DialogHeader } from "@astryxdesign/core";
-import { editorHeaderStore } from "@/components/layout/editor-header-store";
 
 
 interface NoteData {
@@ -28,49 +36,38 @@ export function NoteEditorClient({ note }: { note: NoteData }) {
   const { focusMode } = useFocusMode();
 
   const [title, setTitle] = useState(note.title);
-  const [content, setContent] = useState(note.content ?? "");
+  const [extractedText, setExtractedText] = useState(note.content ?? "");
   const [saveStatus, setSaveStatus] = useState<SaveStatus>("idle");
-  const [lastSavedAt, setLastSavedAt] = useState<Date | null>(
-    note.updatedAt ? new Date(note.updatedAt) : null,
-  );
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
-  const [editor, setEditor] = useState<EditorType | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
-  const [showOutline, setShowOutline] = useState(true);
-  const [zoomLevel, setZoomLevel] = useState(() => {
-    if (typeof window === "undefined") return 100;
-    const saved = localStorage.getItem("knot-editor-zoom");
-    return saved ? Number(saved) : 100;
-  });
-  const ZOOM_OPTIONS = [50, 75, 100, 125, 150, 200];
+  const [backlinks, setBacklinks] = useState<Array<{ id: string; title: string }>>([]);
 
-  // Persist zoom level to localStorage
-  useEffect(() => {
-    localStorage.setItem("knot-editor-zoom", String(zoomLevel));
-  }, [zoomLevel]);
+  // Right sidebar state
+  const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [activeSidebarTab, setActiveSidebarTab] = useState<SidebarTab>("outline");
+  const [headings, setHeadings] = useState<HeadingItem[]>([]);
+
+  // Debounce ref for heading extraction
+  const extractTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // Keep refs in sync to avoid stale closures in saveNote
   const titleRef = useRef(title);
-  const contentRef = useRef(content);
+  const extractedTextRef = useRef(extractedText);
 
   useEffect(() => {
     titleRef.current = title;
-    contentRef.current = content;
-  }, [title, content]);
+    extractedTextRef.current = extractedText;
+  }, [title, extractedText]);
 
   const hasUnsavedRef = useRef(false);
 
+  // Title-only save — content is saved by DocxEditorWrapper via API route
   const saveNote = useCallback(async () => {
     setSaveStatus("saving");
     try {
-      const result = await updateNoteAction(
-        note.id,
-        titleRef.current,
-        contentRef.current,
-      );
+      await updateNoteAction(note.id, titleRef.current, extractedTextRef.current);
       setSaveStatus("saved");
       hasUnsavedRef.current = false;
-      setLastSavedAt(new Date(result.updatedAt));
     } catch {
       setSaveStatus("unsaved");
       hasUnsavedRef.current = true;
@@ -83,7 +80,7 @@ export function NoteEditorClient({ note }: { note: NoteData }) {
     saveNoteRef.current = saveNote;
   }, [saveNote]);
 
-  // Debounced auto-save: restarts on every change, fires after 2s
+  // Debounced auto-save for title: restarts on every title change, fires after 2s
   useEffect(() => {
     if (saveStatus !== "unsaved") return;
 
@@ -92,8 +89,9 @@ export function NoteEditorClient({ note }: { note: NoteData }) {
     }, 2000);
 
     return () => clearTimeout(timer);
-  }, [title, content, saveStatus, saveNote]);
+  }, [title, saveStatus, saveNote]);
 
+  // Save on unmount if unsaved
   useEffect(() => {
     return () => {
       if (hasUnsavedRef.current) {
@@ -102,6 +100,7 @@ export function NoteEditorClient({ note }: { note: NoteData }) {
     };
   }, []);
 
+  // Warn on unsaved beforeunload
   useEffect(() => {
     const handler = (e: BeforeUnloadEvent) => {
       if (!hasUnsavedRef.current) return;
@@ -111,25 +110,24 @@ export function NoteEditorClient({ note }: { note: NoteData }) {
     return () => window.removeEventListener("beforeunload", handler);
   }, []);
 
-  const handleTitleChange = useCallback(
-    (e: React.ChangeEvent<HTMLInputElement>) => {
-      setTitle(e.target.value);
-      setSaveStatus("unsaved");
-      hasUnsavedRef.current = true;
+  // Load backlinks on mount
+  useEffect(() => {
+    getBacklinksAction(note.id).then(setBacklinks).catch(() => {});
+  }, [note.id]);
+
+  // Content change callback from DocxEditorWrapper — fires after API save
+  const handleContentChange = useCallback(
+    (text: string) => {
+      setExtractedText(text);
+      // Fire-and-forget link scanning on extracted text
+      scanAndUpdateLinksAction(note.id, text).catch(() => {});
     },
-    [],
+    [note.id],
   );
 
-  const handleTitleBlur = useCallback(() => {
-    if (saveStatus === "unsaved") {
-      saveNote();
-    }
-  }, [saveStatus, saveNote]);
-
-  const handleEditorUpdate = useCallback((html: string) => {
-    setContent(html);
-    setSaveStatus("unsaved");
-    hasUnsavedRef.current = true;
+  // DocxEditorWrapper save callback — content was saved via API
+  const handleDocxEditorSave = useCallback(() => {
+    // no-op: content save is handled by DocxEditorWrapper
   }, []);
 
   const handleDelete = useCallback(async () => {
@@ -149,37 +147,37 @@ export function NoteEditorClient({ note }: { note: NoteData }) {
     }
   }, [saveStatus, saveNote]);
 
-  // Publish editor state to the header slot via module-level store
-  useEffect(() => {
-    editorHeaderStore.setState({
-      title,
-      isDeleting,
-      saveStatus,
-      deleteDialogOpen,
-      showOutline,
-      zoomLevel,
-      ZOOM_OPTIONS,
-      onTitleChange: handleTitleChange,
-      onTitleBlur: handleTitleBlur,
-      onSave: handleSaveNow,
-      onDeleteDialogOpen: setDeleteDialogOpen,
-      onDelete: handleDelete,
-      onToggleOutline: () => setShowOutline((v) => !v),
-      onZoomChange: setZoomLevel,
-    });
-    return () => editorHeaderStore.setState(null);
-  }, [
-    title,
-    isDeleting,
-    saveStatus,
-    deleteDialogOpen,
-    showOutline,
-    zoomLevel,
-    handleTitleChange,
-    handleTitleBlur,
-    handleSaveNow,
-    handleDelete,
-  ]);
+  // documentName callback — triggered by DocxEditor title bar edit
+  const handleDocumentNameChange = useCallback(
+    (name: string) => {
+      setTitle(name);
+      setSaveStatus("unsaved");
+      hasUnsavedRef.current = true;
+    },
+    [],
+  );
+
+  // Document change callback — extract headings for outline sidebar
+  const handleDocumentChange = useCallback(
+    (document: Document) => {
+      if (extractTimerRef.current) {
+        clearTimeout(extractTimerRef.current);
+      }
+      extractTimerRef.current = setTimeout(() => {
+        setHeadings(extractHeadingsFromDoc(document));
+      }, 500);
+    },
+    [],
+  );
+
+  // Toggle sidebar
+  const handleToggleSidebar = useCallback(() => {
+    setSidebarOpen((prev) => !prev);
+  }, []);
+
+  const handleSidebarTabChange = useCallback((tab: SidebarTab) => {
+    setActiveSidebarTab(tab);
+  }, []);
 
   return (
     <div
@@ -188,36 +186,101 @@ export function NoteEditorClient({ note }: { note: NoteData }) {
         focusMode ? "min-h-screen" : "h-full",
       )}
     >
-      {/* Editor area — Google Docs style */}
-      <div className="editor-gdocs-scroll-container">
-        <div className="editor-gdocs-layout">
-          <div className="flex flex-col min-w-0 flex-1">
-            {/* Full-width toolbar — editing tools */}
-            <div className={cn("editor-toolbar-area", focusMode && "bg-background/95 backdrop-blur-sm")}>
-              <EditorToolbar editor={editor} />
-            </div>
-
-            <div className="editor-gdocs-wrapper" data-focus={focusMode || undefined}>
-              <Editor
-                content={content}
-                onUpdate={handleEditorUpdate}
-                onEditorReady={setEditor}
-                pageLayout
-                zoomLevel={zoomLevel}
+      {/* Editor + Sidebar row */}
+      <div className="flex flex-1 overflow-hidden">
+        {/* Editor */}
+        <div className="flex-1 overflow-hidden min-w-0">
+          <DocxEditorWrapper
+            noteId={note.id}
+            documentName={title}
+            onDocumentNameChange={handleDocumentNameChange}
+            onContentChange={handleContentChange}
+            onDocumentChange={handleDocumentChange}
+            onSave={handleDocxEditorSave}
+            renderLogo={() => (
+              <Button
+                variant="ghost"
+                isIconOnly
+                icon={<ArrowLeft size={16} />}
+                label="Back"
+                tooltip="Back to notes"
+                onClick={() => router.push("/notes")}
               />
-            </div>
-          </div>
-
-          {showOutline && (
-            <OutlineSidebar
-              editor={editor}
-              createdAt={note.createdAt}
-              updatedAt={note.updatedAt}
-              content={content}
-            />
-          )}
+            )}
+            renderTitleBarRight={() => (
+              <div className="flex items-center gap-0.5">
+                <Button
+                  variant="ghost"
+                  isIconOnly
+                  size="sm"
+                  icon={<PanelRightOpen size={14} />}
+                  label="Toggle sidebar"
+                  tooltip={sidebarOpen ? "Close sidebar" : "Open sidebar"}
+                  onClick={handleToggleSidebar}
+                />
+                <Button
+                  variant="ghost"
+                  isIconOnly
+                  size="sm"
+                  icon={
+                    saveStatus === "saving" ? (
+                      <Loader2 size={14} className="animate-spin" />
+                    ) : saveStatus === "saved" ? (
+                      <Check size={14} className="text-green-500" />
+                    ) : (
+                      <Save size={14} />
+                    )
+                  }
+                  label="Save"
+                  tooltip={saveStatus === "saving" ? "Saving…" : saveStatus === "saved" ? "Saved" : "Save"}
+                  onClick={handleSaveNow}
+                  isDisabled={saveStatus !== "unsaved"}
+                />
+                <Button
+                  variant="ghost"
+                  isIconOnly
+                  size="sm"
+                  icon={<Trash2 size={14} className="text-red-500" />}
+                  label="Delete note"
+                  tooltip="Delete note"
+                  onClick={() => setDeleteDialogOpen(true)}
+                />
+              </div>
+            )}
+          />
         </div>
+
+        {/* Right Sidebar */}
+        <RightSidebar
+          isOpen={sidebarOpen}
+          onToggle={handleToggleSidebar}
+          activeTab={activeSidebarTab}
+          onTabChange={handleSidebarTabChange}
+          headings={headings}
+          noteId={note.id}
+        />
       </div>
+
+      {/* Backlinks */}
+      {backlinks.length > 0 && (
+        <div className="px-6 py-3 border-t border-border">
+          <p className="text-xs font-medium text-muted-foreground mb-2 flex items-center gap-1">
+            <Link2 size={12} />
+            Linked from ({backlinks.length})
+          </p>
+          <div className="space-y-1">
+            {backlinks.map((bl) => (
+              <a
+                key={bl.id}
+                href={`/notes/${bl.id}`}
+                className="block text-sm text-primary hover:underline truncate"
+              >
+                {bl.title || "Untitled"}
+              </a>
+            ))}
+          </div>
+        </div>
+      )}
 
       {/* Delete confirmation dialog */}
       <Dialog
